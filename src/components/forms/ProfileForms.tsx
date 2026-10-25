@@ -94,6 +94,8 @@ export function ProfileForm({
             record.revision,
           );
         else await repository.createShop({ name, address, contact });
+        if (record && shops.length === 1)
+          await repository.setPreference("businessProfileName", name.trim());
       } else {
         if (!shopId) throw new Error("Choose an individual shop.");
         if (kind === "stylist")

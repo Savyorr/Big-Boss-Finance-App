@@ -3,6 +3,7 @@
 ## Scope and workflow
 
 - Follow `docs/architecture.md` and the four-stage roadmap. Stage 4 is authorized: audit and fix verified defects, preserve the existing application/data, verify owner workflows and prepare a local release. Do not publish or deploy the application. See `docs/stage-1.md`, `docs/stage-2.md`, and `docs/stage-3.md` for preserved decisions.
+- Latest owner correction: new businesses use separate local database profiles selected before entering the app. Do not restore a combined cross-profile All Locations default. Preserve the original database read-only during discovery and retain legacy multi-location backup support under advanced controls. See `docs/business-profiles.md`. Imported source-field totals must be visible without inventing classification, accounts or missing barbers.
 - Use the existing checkout. Cloud tasks are isolated; do not create worktrees unless explicitly requested.
 - Read the original HTML and JSON backup before finalizing migration mappings or legacy commission rules. Both have now been supplied and inspected read-only; see `docs/legacy-reference.md` for hashes, paths, formats, and calculation rules. Never change or overwrite originals.
 - Clearly label incomplete features and unverified claims. Never use sample financial data as if it belonged to the business.

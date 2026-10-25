@@ -43,6 +43,11 @@ export async function snapshot(database: FinanceDatabase): Promise<DataSet> {
       data[table] = (await database.backups.toArray()).map(
         ({ payload, ...metadata }) => metadata,
       );
+    else if (table === "settings")
+      // The local chooser label is not business data and must not create restore/sync conflicts.
+      data.settings = (await database.settings.toArray()).filter(
+        (s) => s.key !== "businessProfileName",
+      );
     else data[table] = await database.table(table).toArray();
   }
   return sortedData(data);

@@ -1,10 +1,16 @@
+import { createProfile } from "./profile-helpers";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 test("eight workspaces pass automated WCAG AA checks in light and dark themes", async ({
   page,
 }) => {
   test.setTimeout(120000);
-  await page.goto("/#/");
+  await page.goto("/");
+  const gate = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(gate.violations.map((v) => v.id)).toEqual([]);
+  await createProfile(page, "Accessible business");
   for (const theme of ["light", "dark"]) {
     if (theme === "dark")
       await page.getByRole("button", { name: "Switch to dark mode" }).click();
@@ -42,7 +48,9 @@ test("eight workspaces pass automated WCAG AA checks in light and dark themes", 
     path: "test-results/stage4-dark-mobile.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edit Accessible business", exact: true })
+    .click();
   const dialog = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();

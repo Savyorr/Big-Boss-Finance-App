@@ -1,3 +1,8 @@
+import {
+  addLegacyShop,
+  createProfile,
+  chooseLegacyLocation,
+} from "./profile-helpers";
 import Dexie from "dexie";
 import { indexedDB, IDBKeyRange } from "fake-indexeddb";
 import "fake-indexeddb/auto";
@@ -12,11 +17,7 @@ import {
 import { readFile } from "node:fs/promises";
 Object.assign(Dexie.dependencies, { indexedDB, IDBKeyRange });
 async function addShop(page: Page, name = "Import Target") {
-  await page.goto("/#/settings");
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
-  await page.getByLabel("Shop name").fill(name);
-  await page.getByRole("button", { name: "Save shop" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await addLegacyShop(page, name);
 }
 const legacy = (amount = 10) => ({
   app: "Synthetic exchanged ledger",
@@ -55,6 +56,9 @@ async function preview(page: Page) {
   await expect(page.getByRole("status")).toContainText("Preview ready");
 }
 async function confirm(page: Page) {
+  await expect(
+    page.getByRole("button", { name: "Confirm Import", exact: true }),
+  ).toBeEnabled();
   await page
     .getByRole("button", { name: "Confirm Import", exact: true })
     .click();
@@ -73,13 +77,7 @@ test("legacy preview, target selection, repeated imports, details and offline fi
   await addShop(page);
   await page.goto("/#/data");
   await upload(page, legacy());
-  await page
-    .getByRole("button", { name: "Preview import", exact: true })
-    .click();
-  await expect(page.getByRole("alert")).toContainText("Select a target shop");
-  await page
-    .getByLabel("Target shop for legacy records")
-    .selectOption({ label: "Import Target" });
+  await expect(page.getByRole("status")).toContainText("Preview ready");
   await preview(page);
   await expect(
     page.getByText("Destination: Import Target", { exact: false }).first(),
@@ -131,19 +129,19 @@ test("legacy preview, target selection, repeated imports, details and offline fi
   await page.evaluate(() =>
     navigator.serviceWorker.ready.then(() => undefined),
   );
+  // Enter a controlled document after initial installation before simulating network loss.
+  await page.reload();
   await expect
     .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
     .toBe(true);
   await context.setOffline(true);
   await page.reload();
   await upload(page, legacy());
-  await page
-    .getByLabel("Target shop for legacy records")
-    .selectOption({ label: "Import Target" });
+
   await preview(page);
   await confirm(page);
   await page
-    .getByRole("button", { name: "Export All Locations", exact: true })
+    .getByRole("button", { name: "Export business JSON", exact: true })
     .click();
   const event = page.waitForEvent("download");
   await page
@@ -160,6 +158,8 @@ test("legacy preview, target selection, repeated imports, details and offline fi
   await context.setOffline(false);
   const fresh = await context.browser()!.newContext();
   const next = await fresh.newPage();
+  await next.goto("http://127.0.0.1:4173/");
+  await createProfile(next, "Restored business", true);
   await next.goto("http://127.0.0.1:4173/#/data");
   await upload(next, data, "restored-modern.json");
   await preview(next);
@@ -190,9 +190,7 @@ test("drag/drop, malformed JSON, changed-source conflict and restore confirmatio
   await page
     .locator(".drop-zone")
     .dispatchEvent("drop", { dataTransfer: drop });
-  await page
-    .getByLabel("Target shop for legacy records")
-    .selectOption({ label: "Import Target" });
+
   await preview(page);
   await confirm(page);
   await upload(page, legacy(20), "changed.json");
@@ -221,6 +219,9 @@ test("drag/drop, malformed JSON, changed-source conflict and restore confirmatio
     page.getByRole("dialog", { name: "Download JSON file" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
+  await page
+    .getByText("Import history & recovery backups", { exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Restore Backup", exact: true })
     .first()
@@ -286,6 +287,7 @@ test("modern multi-shop import populates existing financial workspaces", async (
     await expect(page.getByRole("status")).toContainText(
       "0 business records added",
     );
+    await chooseLegacyLocation(page, "All Locations");
     await page.goto("/#/");
     await expect(
       page.locator(".metric-card").filter({ hasText: "Total Revenue" }),
@@ -298,13 +300,7 @@ test("modern multi-shop import populates existing financial workspaces", async (
     await expect(
       page.getByRole("row", { name: "Revenue $100.00", exact: true }),
     ).toBeVisible();
-    await page
-      .getByRole("banner")
-      .getByRole("button", { name: "Select location: All Locations" })
-      .click();
-    await page
-      .getByRole("button", { name: "Existing owner shop Individual shop" })
-      .click();
+    await chooseLegacyLocation(page, "Existing owner shop");
     await page.goto("/#/");
     await expect(
       page.locator(".metric-card").filter({ hasText: "Total Revenue" }),

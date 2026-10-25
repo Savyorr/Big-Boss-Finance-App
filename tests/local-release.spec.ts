@@ -1,3 +1,4 @@
+import { createProfile, chooseProfile } from "./profile-helpers";
 import { test, expect, chromium } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
@@ -50,17 +51,8 @@ test("packaged production server, browser restart persistence, offline lazy rout
     let page = context.pages()[0];
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.goto(origin + "/#/settings");
-    await page.getByRole("button", { name: "Add shop", exact: true }).click();
-    await page.getByLabel("Shop name").fill("Restart persistence shop");
-    await page.getByRole("button", { name: "Save shop" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Select location: All Locations" })
-      .click();
-    await page
-      .getByRole("button", { name: "Restart persistence shop Individual shop" })
-      .click();
+    await page.goto(origin + "/");
+    await createProfile(page, "Restart persistence shop");
     await page.goto(origin + "/#/banking");
     await page
       .getByRole("button", { name: "Add account", exact: true })
@@ -96,6 +88,13 @@ test("packaged production server, browser restart persistence, offline lazy rout
     server = await start();
     context = await launch();
     page = context.pages()[0];
+    await page.goto(origin + "/");
+    if (
+      await page
+        .getByRole("heading", { name: "Choose your business", exact: true })
+        .count()
+    )
+      await chooseProfile(page, "Restart persistence shop");
     await page.goto(origin + "/#/settings");
     await expect(
       page.getByRole("heading", {
@@ -129,7 +128,7 @@ test("packaged production server, browser restart persistence, offline lazy rout
     }
     await page.goto(origin + "/#/data");
     await page
-      .getByRole("button", { name: "Export All Locations", exact: true })
+      .getByRole("button", { name: "Export business JSON", exact: true })
       .click();
     const event = page.waitForEvent("download");
     await page

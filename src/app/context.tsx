@@ -45,12 +45,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     String(data?.settings.find((s) => s.key === key)?.value ?? fallback);
   const theme = get("theme", "light");
   const dateFormat = get("dateFormat", "en-CA");
-  const requestedScope = get("activeShop", "all");
+  const activeShops =
+    data?.shops.filter((s) => !s.deletedAt && s.status === "active") ?? [];
+  const requestedScope = get(
+    "activeShop",
+    activeShops.length === 1 ? activeShops[0].id : "all",
+  );
   const scope =
-    requestedScope === "all" ||
-    data?.shops.some((s) => s.id === requestedScope && s.status === "active")
-      ? requestedScope
-      : "all";
+    requestedScope === "all" && activeShops.length === 1
+      ? activeShops[0].id
+      : requestedScope === "all" ||
+          data?.shops.some(
+            (s) => s.id === requestedScope && s.status === "active",
+          )
+        ? requestedScope
+        : "all";
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.style.colorScheme = theme;

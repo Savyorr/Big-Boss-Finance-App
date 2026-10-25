@@ -1,9 +1,12 @@
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../../database/db";
+import { switchBusinessProfile } from "../../services/business-profiles";
 import { useState } from "react";
 import { MapPin, ChevronDown, Search, Check } from "lucide-react";
 import { useApp } from "../../app/context";
 import { Dialog } from "../ui/dialog";
 import { ErrorMessage } from "../ui/shared";
-export function ShopSelector() {
+export function LocationSelector() {
   const { shops, scope, locationName, setScope } = useApp();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -74,5 +77,23 @@ export function ShopSelector() {
         </div>
       </Dialog>
     </>
+  );
+}
+
+export function ShopSelector() {
+  const { locationName } = useApp();
+  const label = useLiveQuery(() => db.settings.get("businessProfileName"), []);
+  const profileName = String(label?.value ?? locationName);
+  return (
+    <button
+      className="shop-selector"
+      aria-label={`Switch business profile: ${profileName}`}
+      onClick={switchBusinessProfile}
+    >
+      <MapPin size={16} />
+      <span>{profileName}</span>
+      <span className="profile-switch-label">Switch profile</span>
+      <ChevronDown size={15} />
+    </button>
   );
 }

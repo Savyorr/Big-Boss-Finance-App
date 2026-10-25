@@ -1,5 +1,7 @@
 # Stage 4 — audit and local release
 
+This records the original v0.4 audit checkpoint. The subsequent v0.5 separate-business profile and imported-history correction is documented in [business-profiles.md](business-profiles.md); its verification supersedes the earlier counts below.
+
 Audit date: 2026-10-25. Existing Stage 1–3 application preserved. No public hosting, cloud functionality, live-data seeding or reference-file modification. Version 0.4.0. No new IndexedDB migration: additive version 3 and prior migrations retained.
 
 ## Verified defects and fixes

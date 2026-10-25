@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Upload, Download, ShieldCheck, FileJson, History } from "lucide-react";
 import { useApp } from "../app/context";
@@ -126,6 +127,9 @@ export function DataManagementPage() {
   const { shops, scope } = useApp();
   const [file, setFile] = useState<File | null>(null);
   const [target, setTarget] = useState(scope === "all" ? "" : scope);
+  useEffect(() => {
+    if (!target && scope !== "all") setTarget(scope);
+  }, [scope, target]);
   const [namespace, setNamespace] = useState("");
   const [mode, setMode] = useState<"merge" | "replace">("merge");
   const [plan, setPlan] = useState<ImportPlan | null>(null);
@@ -188,18 +192,19 @@ export function DataManagementPage() {
     setError("");
     setFile(next);
     setMapping({});
+    void preview(next);
   }
-  async function preview() {
-    if (!file) return;
+  async function preview(selectedFile: File | null = file) {
+    if (!selectedFile) return;
     setBusy("Reading and validating locally…");
     setError("");
     reset();
     try {
-      const next = await exchangeService.preview(file, {
+      const next = await exchangeService.preview(selectedFile, {
         targetShopId: target || undefined,
         namespace: namespace || undefined,
         mode,
-        mapping,
+        mapping: selectedFile === file ? mapping : {},
       });
       setPlan(next);
       setStatus("Preview ready. No business records have changed.");
@@ -292,6 +297,23 @@ export function DataManagementPage() {
           {busy || status}
         </p>
       )}
+      {status.startsWith("Import complete") && (
+        <section className="legacy-overview">
+          <h2>Your imported history is ready</h2>
+          <p>
+            The original transaction-only JSON does not include barber/stylist
+            profiles. If you imported that file, your financial transactions are
+            saved, but you must add your barbers or import a full backup that
+            includes staff.
+          </p>
+          <Button asChild>
+            <Link to="/">See imported financial history</Link>
+          </Button>{" "}
+          <Button asChild variant="outline">
+            <Link to="/stylists">Add your barbers</Link>
+          </Button>
+        </section>
+      )}
       <div className="two-columns">
         <Panel
           title="Import Data"
@@ -333,55 +355,67 @@ export function DataManagementPage() {
             )}
           </div>
           <div className="form-stack">
-            <Field label="Target shop for legacy records">
-              <select
-                disabled={!!busy}
-                value={target}
-                onChange={(e) => {
-                  setTarget(e.target.value);
-                  reset();
-                }}
+            <p className="notice">
+              Import into this business:{" "}
+              <strong>
+                {shops.find((s) => s.id === target)?.name ??
+                  "Choose a destination below"}
+              </strong>
+              . Choosing a file prepares a preview; nothing is saved until you
+              confirm.
+            </p>
+            <details>
+              <summary>Advanced import options</summary>
+              <Field label="Target shop for legacy records">
+                <select
+                  disabled={!!busy}
+                  value={target}
+                  onChange={(e) => {
+                    setTarget(e.target.value);
+                    reset();
+                  }}
+                >
+                  <option value="">Choose a target for legacy files</option>
+                  {shops
+                    .filter((s) => s.status === "active")
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+              <Field
+                label="Legacy dataset label (optional)"
+                hint="Keep this label consistent for files from the same originating dataset. Different datasets with reused IDs need different labels."
               >
-                <option value="">Choose a target for legacy files</option>
-                {shops
-                  .filter((s) => s.status === "active")
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field
-              label="Legacy dataset label (optional)"
-              hint="Keep this label consistent for files from the same originating dataset. Different datasets with reused IDs need different labels."
-            >
-              <input
-                value={namespace}
-                disabled={!!busy}
-                onChange={(e) => {
-                  setNamespace(e.target.value);
-                  reset();
-                }}
-                placeholder="Defaults to the legacy application's identity"
-              />
-            </Field>
-            <Field label="Import mode">
-              <select
-                value={mode}
-                disabled={!!busy}
-                onChange={(e) => {
-                  setMode(e.target.value as typeof mode);
-                  reset();
-                }}
-              >
-                <option value="merge">Merge · recommended</option>
-                <option value="replace">
-                  Replace selected imported shop scope · advanced
-                </option>
-              </select>
-            </Field>
-            <Button disabled={!file || !!busy} onClick={preview}>
+                <input
+                  value={namespace}
+                  disabled={!!busy}
+                  onChange={(e) => {
+                    setNamespace(e.target.value);
+                    reset();
+                  }}
+                  placeholder="Defaults to the legacy application's identity"
+                />
+              </Field>
+              <Field label="Import mode">
+                <select
+                  value={mode}
+                  disabled={!!busy}
+                  onChange={(e) => {
+                    setMode(e.target.value as typeof mode);
+                    reset();
+                  }}
+                >
+                  <option value="merge">Merge · recommended</option>
+                  <option value="replace">
+                    Replace selected imported shop scope · advanced
+                  </option>
+                </select>
+              </Field>
+            </details>
+            <Button disabled={!file || !!busy} onClick={() => preview()}>
               <Upload size={16} />
               Preview import
             </Button>
@@ -638,26 +672,28 @@ export function DataManagementPage() {
             subtitle="Send downloaded JSON using email, WhatsApp, or USB."
           >
             <div className="export-options">
-              <div>
-                <Download size={20} />
+              {shops.length > 1 && (
                 <div>
-                  <strong>Current shop</strong>
-                  <p>Includes all required records and revision history.</p>
+                  <Download size={20} />
+                  <div>
+                    <strong>Current shop</strong>
+                    <p>Includes all required records and revision history.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={scope === "all" || !!busy}
+                    onClick={() => exportScope(scope, "shop")}
+                  >
+                    Export Current Shop
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  disabled={scope === "all" || !!busy}
-                  onClick={() => exportScope(scope, "shop")}
-                >
-                  Export Current Shop
-                </Button>
-              </div>
+              )}
               <div>
                 <Download size={20} />
                 <div>
-                  <strong>All locations</strong>
+                  <strong>This business profile</strong>
                   <p>
-                    All shop records, settings, source metadata and history.
+                    All records, settings and history in this business only.
                   </p>
                 </div>
                 <Button
@@ -665,13 +701,13 @@ export function DataManagementPage() {
                   disabled={!!busy}
                   onClick={() => exportScope("all", "all")}
                 >
-                  Export All Locations
+                  Export business JSON
                 </Button>
               </div>
               <div>
                 <Download size={20} />
                 <div>
-                  <strong>Full application backup</strong>
+                  <strong>Full business backup</strong>
                   <p>Restorable into a fresh installation.</p>
                 </div>
                 <Button
@@ -917,141 +953,146 @@ export function DataManagementPage() {
           </div>
         </Panel>
       )}
-      <Panel title="Backup history" action={<History size={18} />}>
-        <DataTable
-          columns={["Created", "Locations", "Reason", "Recovery", "Actions"]}
-          empty={!backups?.length}
-          title="No local backups yet"
-          description="Create a backup and retain a downloaded copy."
-        >
-          {backups?.slice(backupPage * 25, backupPage * 25 + 25).map((b) => (
-            <tr key={b.id}>
-              <td>{b.createdAt}</td>
-              <td>{b.shopIds.length}</td>
-              <td>{b.reason}</td>
-              <td>
-                {b.payload
-                  ? "Recovery available"
-                  : "Metadata only · use original file"}
-              </td>
-              <td>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!b.payload || !!busy}
-                  onClick={() => setDownload(b.payload as Envelope)}
-                >
-                  Download backup
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={!b.payload || !!busy}
-                  onClick={async () => {
-                    setBusy("Preparing restore preview…");
-                    setError("");
-                    reset();
-                    try {
-                      setMode("replace");
-                      setPlan(await exchangeService.restorePreview(b.id));
-                      setStatus(
-                        "Restore preview ready. Resolve differences and confirm replacement.",
-                      );
-                    } catch (e) {
-                      setError(messageOf(e));
-                    } finally {
-                      setBusy("");
-                    }
-                  }}
-                >
-                  Restore Backup
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-        <div className="table-footer">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={backupPage === 0}
-            onClick={() => setBackupPage((p) => p - 1)}
+      <details>
+        <summary>Import history & recovery backups</summary>
+        <Panel title="Backup history" action={<History size={18} />}>
+          <DataTable
+            columns={["Created", "Locations", "Reason", "Recovery", "Actions"]}
+            empty={!backups?.length}
+            title="No local backups yet"
+            description="Create a backup and retain a downloaded copy."
           >
-            Previous backups
-          </Button>
-          <span>Page {backupPage + 1}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={(backupPage + 1) * 25 >= (backups?.length ?? 0)}
-            onClick={() => setBackupPage((p) => p + 1)}
+            {backups?.slice(backupPage * 25, backupPage * 25 + 25).map((b) => (
+              <tr key={b.id}>
+                <td>{b.createdAt}</td>
+                <td>{b.shopIds.length}</td>
+                <td>{b.reason}</td>
+                <td>
+                  {b.payload
+                    ? "Recovery available"
+                    : "Metadata only · use original file"}
+                </td>
+                <td>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!b.payload || !!busy}
+                    onClick={() => setDownload(b.payload as Envelope)}
+                  >
+                    Download backup
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!b.payload || !!busy}
+                    onClick={async () => {
+                      setBusy("Preparing restore preview…");
+                      setError("");
+                      reset();
+                      try {
+                        setMode("replace");
+                        setPlan(await exchangeService.restorePreview(b.id));
+                        setStatus(
+                          "Restore preview ready. Resolve differences and confirm replacement.",
+                        );
+                      } catch (e) {
+                        setError(messageOf(e));
+                      } finally {
+                        setBusy("");
+                      }
+                    }}
+                  >
+                    Restore Backup
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </DataTable>
+          <div className="table-footer">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={backupPage === 0}
+              onClick={() => setBackupPage((p) => p - 1)}
+            >
+              Previous backups
+            </Button>
+            <span>Page {backupPage + 1}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={(backupPage + 1) * 25 >= (backups?.length ?? 0)}
+              onClick={() => setBackupPage((p) => p + 1)}
+            >
+              Next backups
+            </Button>
+          </div>
+        </Panel>
+        <Panel title="Import history">
+          <DataTable
+            columns={[
+              "Filename / format",
+              "Imported",
+              "Destination",
+              "Added",
+              "Updated",
+              "Skipped",
+              "Deleted",
+              "Conflicts",
+              "Errors / result",
+            ]}
+            empty={!history?.length}
+            title="No imports performed"
           >
-            Next backups
-          </Button>
-        </div>
-      </Panel>
-      <Panel title="Import history">
-        <DataTable
-          columns={[
-            "Filename / format",
-            "Imported",
-            "Destination",
-            "Added",
-            "Updated",
-            "Skipped",
-            "Deleted",
-            "Conflicts",
-            "Errors / result",
-          ]}
-          empty={!history?.length}
-          title="No imports performed"
-        >
-          {history?.slice(historyPage * 25, historyPage * 25 + 25).map((h) => (
-            <tr key={h.id}>
-              <td>
-                {h.filename}
-                <small className="cell-note">
-                  {h.format} · {h.mode}
-                </small>
-              </td>
-              <td>{h.importedAt}</td>
-              <td>
-                {h.shopIds
-                  .map((id) => shops.find((s) => s.id === id)?.name ?? id)
-                  .join(", ")}
-              </td>
-              <td>{h.added}</td>
-              <td>{h.updated}</td>
-              <td>{h.skipped ?? 0}</td>
-              <td>{h.deleted ?? 0}</td>
-              <td>{h.conflicts}</td>
-              <td>
-                {h.result}
-                <small className="cell-note">{h.errors?.join(" · ")}</small>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-        <div className="table-footer">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={historyPage === 0}
-            onClick={() => setHistoryPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span>Page {historyPage + 1}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={(historyPage + 1) * 25 >= (history?.length ?? 0)}
-            onClick={() => setHistoryPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </Panel>
+            {history
+              ?.slice(historyPage * 25, historyPage * 25 + 25)
+              .map((h) => (
+                <tr key={h.id}>
+                  <td>
+                    {h.filename}
+                    <small className="cell-note">
+                      {h.format} · {h.mode}
+                    </small>
+                  </td>
+                  <td>{h.importedAt}</td>
+                  <td>
+                    {h.shopIds
+                      .map((id) => shops.find((s) => s.id === id)?.name ?? id)
+                      .join(", ")}
+                  </td>
+                  <td>{h.added}</td>
+                  <td>{h.updated}</td>
+                  <td>{h.skipped ?? 0}</td>
+                  <td>{h.deleted ?? 0}</td>
+                  <td>{h.conflicts}</td>
+                  <td>
+                    {h.result}
+                    <small className="cell-note">{h.errors?.join(" · ")}</small>
+                  </td>
+                </tr>
+              ))}
+          </DataTable>
+          <div className="table-footer">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={historyPage === 0}
+              onClick={() => setHistoryPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+            <span>Page {historyPage + 1}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={(historyPage + 1) * 25 >= (history?.length ?? 0)}
+              onClick={() => setHistoryPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </Panel>
+      </details>
       {confirmation && plan && (
         <Dialog
           open

@@ -1,3 +1,4 @@
+import { createProfile } from "./profile-helpers";
 import { test, expect, type Page } from "@playwright/test";
 async function navigate(page: Page, name: string) {
   await page.getByRole("link", { name, exact: true }).click();
@@ -17,17 +18,7 @@ async function createAccount(
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 async function setup(page: Page) {
-  await page.goto("/#/settings");
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
-  await page.getByLabel("Shop name").fill("Finance Test");
-  await page.getByRole("button", { name: "Save shop" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Select location: All Locations" })
-    .click();
-  await page
-    .getByRole("button", { name: "Finance Test Individual shop" })
-    .click();
+  await createProfile(page, "Finance Test");
   await navigate(page, "Stylists & Commissions");
   await page.getByRole("button", { name: "Add stylist", exact: true }).click();
   await page.getByLabel("Stylist name").fill("Test Stylist");

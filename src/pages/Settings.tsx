@@ -1,3 +1,4 @@
+import { LocationSelector } from "../components/layout/ShopSelector";
 import { FinancialPreferencesForm } from "../components/forms/FinancialPreferences";
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -51,15 +52,19 @@ export function SettingsPage() {
         description="Make this workspace work for your business."
       />
       {error && <ErrorMessage message={error} />}
+      <details className="legacy-location-controls">
+        <summary>Advanced: saved locations in this profile</summary>
+        <p>
+          Separate businesses should use Switch profile. These controls preserve
+          support for older backups that contain multiple locations within one
+          business.
+        </p>
+        <LocationSelector />
+        <Button onClick={() => setEditing("new")}>Add shop</Button>
+      </details>
       <Panel
-        title="Shop management"
-        subtitle="Each location has its own profiles and financial records."
-        action={
-          <Button onClick={() => setEditing("new")}>
-            <Plus size={16} />
-            Add shop
-          </Button>
-        }
+        title="Business details"
+        subtitle="This profile has its own local financial database. Use Switch profile to open a different business."
       >
         {shops.length === 0 ? (
           <EmptyState

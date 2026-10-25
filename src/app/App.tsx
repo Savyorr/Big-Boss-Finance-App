@@ -1,5 +1,6 @@
 import { Component, lazy, Suspense, type ReactNode } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BusinessProfileGate } from "./BusinessProfileGate";
 import { AppProvider } from "./context";
 import { Shell } from "../components/layout/Shell";
 const DashboardPage = lazy(() =>
@@ -55,37 +56,39 @@ class ErrorBoundary extends Component<
 export function App() {
   return (
     <ErrorBoundary>
-      <AppProvider>
-        <HashRouter>
-          <Suspense
-            fallback={
-              <p role="status" className="page">
-                Opening workspace…
-              </p>
-            }
-          >
-            <Routes>
-              <Route element={<Shell />}>
-                <Route index element={<DashboardPage />} />
-                <Route path="daily-sales" element={<DailySalesPage />} />
-                <Route path="transactions" element={<TransactionsPage />} />
-                <Route
-                  path="stylists"
-                  element={<ProfilesPage key="stylist" kind="stylist" />}
-                />
-                <Route
-                  path="banking"
-                  element={<ProfilesPage key="account" kind="account" />}
-                />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="data" element={<DataManagementPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </Suspense>
-        </HashRouter>
-      </AppProvider>
+      <BusinessProfileGate>
+        <AppProvider>
+          <HashRouter>
+            <Suspense
+              fallback={
+                <p role="status" className="page">
+                  Opening workspace…
+                </p>
+              }
+            >
+              <Routes>
+                <Route element={<Shell />}>
+                  <Route index element={<DashboardPage />} />
+                  <Route path="daily-sales" element={<DailySalesPage />} />
+                  <Route path="transactions" element={<TransactionsPage />} />
+                  <Route
+                    path="stylists"
+                    element={<ProfilesPage key="stylist" kind="stylist" />}
+                  />
+                  <Route
+                    path="banking"
+                    element={<ProfilesPage key="account" kind="account" />}
+                  />
+                  <Route path="reports" element={<ReportsPage />} />
+                  <Route path="data" element={<DataManagementPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              </Routes>
+            </Suspense>
+          </HashRouter>
+        </AppProvider>
+      </BusinessProfileGate>
     </ErrorBoundary>
   );
 }

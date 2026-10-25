@@ -72,4 +72,19 @@ export class FinanceDatabase extends Dexie {
     this.version(3).stores(schemaV3);
   }
 }
-export const db = new FinanceDatabase();
+function databaseForThisWindow() {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      const selected = sessionStorage.getItem("big-boss-active-business");
+      if (
+        selected === "big-boss-finance" ||
+        selected?.startsWith("big-boss-business-")
+      )
+        return selected;
+    }
+  } catch {
+    /* Profile selection will explain unavailable browser storage. */
+  }
+  return "big-boss-finance";
+}
+export const db = new FinanceDatabase(databaseForThisWindow());

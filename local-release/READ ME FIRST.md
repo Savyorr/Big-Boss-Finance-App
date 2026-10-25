@@ -6,7 +6,7 @@ Double-click **Start Big Boss Finance.cmd**. The application opens in your defau
 
 ## First use
 
-1. Open Settings, add your shop and select it at the top.
+1. Choose your saved business on the opening screen, or enter a business name and choose Create business profile. Each different business gets a separate profile. Use Switch profile to change businesses.
 2. Add stylists and agreed commission rates. Add bank/cash accounts using actual known opening balances and dates; never estimate balances.
 3. Enter Daily Sales: each stylist's service revenue, product sales and receipts. Check totals before saving.
 4. Enter other Transactions using their correct types. Transfers, loan principal, owner distributions and bank deposits are not ordinary expenses or extra revenue.
@@ -34,8 +34,15 @@ The production app and local server are tested on Linux Chromium. The Windows co
 
 ## Everyday shortcuts
 
-Use the location button at the top to switch shops. All Locations combines reports; enter new records in an individual shop. To add an expense, open Transactions → Add Transaction, choose Operating expense, enter the date, amount, category and paying account, then save. To pay a stylist, open Stylists & Commissions → Payment history → Pay Stylist, select the stylist/date/paying account and amount, then save the payment.
+Use Switch profile at the top to choose a different business. Its barbers, records, settings and backups stay separate. Existing multi-location backups remain together in their original saved profile, with advanced location controls in Settings. To add an expense, open Transactions → Add Transaction, choose Operating expense, enter the date, amount, category and paying account, then save. To pay a stylist, open Stylists & Commissions → Payment history → Pay Stylist, select the stylist/date/paying account and amount, then save the payment.
 
 In Reports, choose the shop and reporting dates. Review revenue, operating expenses, earned commissions, profit and banking separately. Print / Save as PDF uses your browser. Needs review warnings mean some imported figures are excluded from operating reports.
 
 Offline use: let the application finish loading once with the local helper available. The installed offline cache then opens all eight pages in the same browser/profile. JSON selection, previews and downloads also work without internet. Keep running the local helper for the normal daily launch; its presence does not require internet.
+
+
+## Existing imports and this update
+
+The opening chooser automatically shows your existing business. Open it to keep using the records already imported; do not clear data or start over. Before installing an update, download a backup and close the old helper. Launch the new version using the same browser/profile and address. Accept the app update banner and reload if offered.
+
+Selecting a JSON file now prepares its preview automatically. Confirm it after reviewing the destination and changes. The dashboard shows original imported income/expenses/withdrawals under Your imported financial history; those amounts remain separate from newly posted entries. The original transaction-only JSON does not contain your barbers. Add them under Stylists & Commissions, or import a full backup from the old app that includes staff. The existing financial import does not need to be repeated.

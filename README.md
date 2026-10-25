@@ -12,20 +12,22 @@ Read the short [father's user guide](local-release/READ%20ME%20FIRST.md) for dai
 
 Developers: use Node >=22.12, `npm ci --cache /workspace/.npm-cache`, then `npm run dev`. The repository-root `start-windows.cmd` remains a development helper. Build the production package with `npm run release:local`. Developer commands and private-fixture requirements appear below.
 
-## Create your first shop
+## Choose your business profile
 
-Open **Settings → Add shop**, enter the shop name and optional address/contact details, then choose **Save shop**. Use the location selector in the top bar to choose it. Add stylists under **Stylists & Commissions**, and accounts with actual opening balances under **Banking**. Each profile belongs to one immutable shop ID. In All Locations, new profile forms require an individual shop selection.
+On first launch, choose **Create business profile**, enter the business name and open it. A different business gets a different profile from this same opening screen, with its own barbers, sales, accounts, settings and backups. Use **Switch profile** at the top to return to the chooser. These are separate local workspaces; no online account or password is required.
 
-Shop names and details can be edited. Archive/restore controls preserve profiles and historical data. Stylist editing supports deactivation, and account editing supports archiving. Editing a profile does not move its historical records to a different shop.
+Existing records appear as the saved business profile automatically. Open that profile to see your previous imports; do not start again or clear browser storage. Older multi-location workspaces are preserved, with their location controls in advanced Settings. New separate businesses belong in separate profiles.
+
+Add your barbers under **Stylists & Commissions**, then add your accounts under **Banking** using actual opening balances. Selecting a JSON file in **Data Management** now prepares its preview automatically. Review and confirm before it changes your records. The original transaction-only JSON has no staff list: the dashboard shows its imported financial history, while the stylist page explains how to add barbers or restore a full staff backup. See [business profiles and import changes](docs/business-profiles.md).
 
 ## Current capabilities
 
-- All eight workspaces, responsive navigation, searchable location selection, persisted themes and per-shop financial preferences.
+- Separate business profiles, all eight workspaces, responsive navigation, independent themes and financial preferences.
 - Shop, stylist and account management with effective-dated commission rules.
 - Daily sales, product/service revenue, calculated or verified cash receipts, historical earnings and commission settlement.
 - Validated transaction entry/editing, custom categories, transfers and financing, revision protection, confirmed soft deletion and audit history.
 - Account balances, cumulative cleared reconciliation and change detection.
-- Shared dashboard/report calculations, monthly/fiscal-year/custom ranges, All Locations consolidation, and browser Print / Save as PDF.
+- Shared dashboard/report calculations, monthly/fiscal-year/custom ranges, legacy within-profile location consolidation, and browser Print / Save as PDF.
 - Versioned IndexedDB migration and production offline operation.
 
 See [Stage 3 file exchange and recovery](docs/stage-3.md) and [Stage 2 financial assumptions](docs/stage-2.md).
@@ -88,4 +90,4 @@ See [Stage 3 exchange/recovery contracts](docs/stage-3.md), [Stage 2 financial r
 
 Actual financial backups, business record payloads and private monetary expectations are excluded from GitHub. To run the complete private regression suite, provide the original unchanged backup via `BIG_BOSS_LEGACY_FIXTURE` and the independently recorded expected totals via `BIG_BOSS_LEGACY_EXPECTED` (default: ignored `private/legacy-expected-totals.json`). The expected file is a JSON object with integer-cent `income`, `expense`, `bankCredit`, `bankDeposit` and `bankDebit` totals. Both files have pinned integrity hashes; missing/wrong private references fail rather than skipping or weakening the tests. Private local audit copies remain under ignored `private/audit-documents/` and are not needed to run the application.
 
-The existing Windows release ZIP is intentionally included in Git; generated extracted release files and dependencies remain ignored. This publication changes privacy handling of test evidence/documentation only; the production application and ZIP have not been rebuilt or modified.
+The current Windows release ZIP is intentionally included in Git; generated extracted release files, private references and dependencies remain ignored. The earlier privacy-only publication is followed by the separate-business profile and imported-history update described above.

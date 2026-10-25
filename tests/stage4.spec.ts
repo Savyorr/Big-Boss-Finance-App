@@ -1,3 +1,5 @@
+import { formatMoney } from "../src/calculations/money";
+import { addLegacyShop, createProfile } from "./profile-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -5,11 +7,7 @@ const fixture =
   process.env.BIG_BOSS_LEGACY_FIXTURE ??
   "/workspace/attachments/d3e1664b-6fc9-4965-8033-ce9d39fc7678/Big_Boss_Finance_Backup_2026-10-23.json";
 async function addShop(page: Page, name: string) {
-  await page.goto("/#/settings");
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
-  await page.getByLabel("Shop name").fill(name);
-  await page.getByRole("button", { name: "Save shop" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await addLegacyShop(page, name);
 }
 async function preview(page: Page) {
   await page
@@ -18,6 +16,9 @@ async function preview(page: Page) {
   await expect(page.getByRole("status")).toContainText("Preview ready");
 }
 async function merge(page: Page) {
+  await expect(
+    page.getByRole("button", { name: "Confirm Import", exact: true }),
+  ).toBeEnabled();
   await page
     .getByRole("button", { name: "Confirm Import", exact: true })
     .click();
@@ -31,7 +32,7 @@ async function merge(page: Page) {
 async function exported(page: Page) {
   await page.goto("/#/data");
   await page
-    .getByRole("button", { name: "Export All Locations", exact: true })
+    .getByRole("button", { name: "Export business JSON", exact: true })
     .click();
   const download = page.waitForEvent("download");
   await page
@@ -75,9 +76,7 @@ test("actual original: browser import, all source fields and totals, clean resto
   await page
     .getByLabel("Select JSON file", { exact: true })
     .setInputFiles(fixture);
-  await page
-    .getByLabel("Target shop for legacy records")
-    .selectOption({ label: "Private audit target" });
+
   await preview(page);
   await merge(page);
   const native = await exported(page);
@@ -115,6 +114,20 @@ test("actual original: browser import, all source fields and totals, clean resto
       (r: any) => r.legacyFields.bankDebit > 0 && r.legacyFields.expense === 0,
     ),
   ).toHaveLength(277);
+  await page.goto("/#/");
+  const imported = page.getByRole("region", {
+    name: "Imported financial history",
+  });
+  await expect(imported).toContainText("968 imported transactions");
+  const expectedFigures = JSON.parse(expectedText);
+  for (const [label, key] of [
+    ["Imported income", "income"],
+    ["Imported expenses", "expense"],
+    ["Imported bank withdrawals", "bankDebit"],
+  ])
+    await expect(
+      imported.locator(".metric-card").filter({ hasText: label }),
+    ).toContainText(formatMoney(expectedFigures[key]));
   await page.goto("/#/transactions");
   await expect(page.locator("tbody tr")).toHaveCount(50);
   await page.goto("/#/reports");
@@ -124,6 +137,8 @@ test("actual original: browser import, all source fields and totals, clean resto
   const other = await browser.newContext();
   const fresh = await other.newPage();
   try {
+    await fresh.goto("http://127.0.0.1:4173/");
+    await createProfile(fresh, "Restored original", true);
     await fresh.goto("http://127.0.0.1:4173/#/data");
     await upload(fresh, native);
     await preview(fresh);
@@ -134,6 +149,7 @@ test("actual original: browser import, all source fields and totals, clean resto
     await fresh
       .getByLabel("Select JSON file", { exact: true })
       .setInputFiles(fixture);
+    await fresh.getByText("Advanced import options", { exact: true }).click();
     await fresh
       .getByLabel("Target shop for legacy records")
       .selectOption({ label: "Private audit target" });
@@ -153,10 +169,6 @@ test("future commission scheduling survives a name-only profile edit", async ({
   page,
 }) => {
   await addShop(page, "Rate test");
-  await page
-    .getByRole("button", { name: "Select location: All Locations" })
-    .click();
-  await page.getByRole("button", { name: "Rate test Individual shop" }).click();
   await page.goto("/#/stylists");
   await page.getByRole("button", { name: "Add stylist", exact: true }).click();
   await page.getByLabel("Stylist name").fill("Rate stylist");
@@ -196,6 +208,7 @@ test("all lazy routes remain available offline, responsive, keyboard-accessible 
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  await createProfile(page, "Offline profile");
   await page.goto("/#/");
   await page.evaluate(() =>
     navigator.serviceWorker.ready.then(() => undefined),
@@ -228,7 +241,9 @@ test("all lazy routes remain available offline, responsive, keyboard-accessible 
   }
   await context.setOffline(false);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edit Offline profile", exact: true })
+    .click();
   await expect(page.getByLabel("Shop name")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -263,9 +278,7 @@ test("two independent owners exchange three shops, divergent edits and deletion 
     ],
   };
   await upload(page, source);
-  await page
-    .getByLabel("Target shop for legacy records")
-    .selectOption({ label: "North" });
+
   await preview(page);
   await merge(page);
   const original = await exported(page);
@@ -279,6 +292,8 @@ test("two independent owners exchange three shops, divergent edits and deletion 
     await expect(p.getByRole("dialog")).toHaveCount(0);
   }
   try {
+    await next.goto("http://127.0.0.1:4173/");
+    await createProfile(next, "Owner B", true);
     await next.goto("http://127.0.0.1:4173/#/data");
     await upload(next, original);
     await preview(next);

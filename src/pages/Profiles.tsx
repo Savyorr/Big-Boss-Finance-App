@@ -65,6 +65,25 @@ export function ProfilesPage({ kind }: { kind: "stylist" | "account" }) {
           </Button>
         }
       />
+      {isStylist &&
+        records?.length === 0 &&
+        data?.transactions.some(
+          (t) =>
+            !t.deletedAt &&
+            (scope === "all" || t.shopId === scope) &&
+            t.source?.format === "legacy-transactions",
+        ) && (
+          <section className="legacy-overview">
+            <h2>Your original JSON contains transactions, not barbers</h2>
+            <p>
+              Your import succeeded. This file has no staff list, so it cannot
+              restore barber names, commission rates or their sales allocations.
+              Add your barbers using Add stylist, or import a full backup
+              exported from the old application that includes staff. Existing
+              transactions will stay unchanged.
+            </p>
+          </section>
+        )}
       {data &&
         data.transactions.some(
           (t) =>

@@ -1,31 +1,20 @@
+import { createProfile, chooseProfile } from "./profile-helpers";
 import { test, expect } from "@playwright/test";
 test("Stage 1 profiles, location isolation, themes, navigation and reload persistence", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Financial Overview" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Settings", exact: true }).click();
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
-  await page.getByLabel("Shop name").fill("Downtown");
-  await page.getByLabel("Address (optional)").fill("123 Main");
-  await page.getByRole("button", { name: "Save shop" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "Downtown", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
-  await page.getByLabel("Shop name").fill("West End");
-  await page.getByRole("button", { name: "Save shop" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await createProfile(page, "Downtown");
+  await page.goto("/#/settings");
   await page
-    .getByRole("button", { name: "Select location: All Locations" })
+    .getByRole("button", { name: "Edit Downtown", exact: true })
     .click();
-  await page.getByLabel("Search locations").fill("Down");
-  await page.getByRole("button", { name: "Downtown 123 Main" }).click();
+  await page.getByLabel("Address (optional)").fill("123 Main");
+  await page.getByRole("button", { name: "Save shop", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await createProfile(page, "West End");
+  await chooseProfile(page, "Downtown");
   await page
     .getByRole("link", { name: "Stylists & Commissions", exact: true })
     .click();
@@ -71,8 +60,8 @@ test("Stage 1 profiles, location isolation, themes, navigation and reload persis
   await expect(
     page.getByRole("cell", { name: "$1,234.56", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Select location: Downtown" }).click();
-  await page.getByRole("button", { name: "West End Individual shop" }).click();
+  await chooseProfile(page, "West End");
+  await page.goto("/#/banking");
   await expect(
     page.getByRole("cell", { name: "Operating chequing", exact: true }),
   ).toHaveCount(0);
@@ -82,10 +71,8 @@ test("Stage 1 profiles, location isolation, themes, navigation and reload persis
   await expect(
     page.getByRole("cell", { name: "Alex Smith", exact: true }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Select location: West End" }).click();
-  await page
-    .getByRole("button", { name: "All Locations Consolidated view" })
-    .click();
+  await chooseProfile(page, "Downtown");
+  await page.goto("/#/stylists");
   await expect(
     page.getByRole("cell", { name: "Alex Smith", exact: true }),
   ).toBeVisible();
@@ -167,17 +154,27 @@ test("Stage 1 profiles, location isolation, themes, navigation and reload persis
   expect(errors).toEqual([]);
 });
 test("required validation and import preview stay honest", async ({ page }) => {
-  await page.goto("/#/settings");
-  await page.getByRole("button", { name: "Add shop", exact: true }).click();
-  await page.getByRole("button", { name: "Save shop" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Create business profile", exact: true })
+    .click();
   expect(
     await page
-      .getByLabel("Shop name")
+      .getByLabel("Business name")
       .evaluate((el: HTMLInputElement) => el.validity.valueMissing),
   ).toBe(true);
+  await page.getByLabel("Business name").fill("   ");
+  await page
+    .getByRole("button", { name: "Create business profile", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Enter a business name");
+  await createProfile(page, "Validation business");
+  await page.goto("/#/settings");
+  await page
+    .getByRole("button", { name: "Edit Validation business", exact: true })
+    .click();
   await page.getByLabel("Shop name").fill("   ");
-  await page.getByRole("button", { name: "Save shop" }).click();
+  await page.getByRole("button", { name: "Save shop", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Shop name is required");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.goto("/#/data");
@@ -198,13 +195,13 @@ test("required validation and import preview stay honest", async ({ page }) => {
   await page.goto("/#/daily-sales");
   await expect(
     page.getByRole("button", { name: "Record Today's Sales" }),
-  ).toBeDisabled();
+  ).toBeEnabled();
 });
 test("production shell reloads offline after initial cache installation", async ({
   page,
   context,
 }) => {
-  await page.goto("/");
+  await createProfile(page, "Offline business");
   await expect(
     page.getByRole("heading", { name: "Financial Overview" }),
   ).toBeVisible();

@@ -1,3 +1,4 @@
+import { ImportedHistory } from "../components/dashboard/ImportedHistory";
 import { reportingRangeIssue } from "../utils/dates";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -127,6 +128,12 @@ export function DashboardPage() {
         </div>
         <span className="badge badge-green">LOCAL-FIRST</span>
       </div>
+      {valid && <ImportedHistory from={range.from} to={range.to} />}
+      {summary.reviewCount > 0 && (
+        <h2 className="posted-figures-heading">
+          Posted entries & verified account figures
+        </h2>
+      )}
       <div className="metrics-grid">
         {metrics.map(([label, Icon, description, amount], i) => (
           <MetricCard

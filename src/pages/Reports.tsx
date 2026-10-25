@@ -1,3 +1,4 @@
+import { ImportedHistory } from "../components/dashboard/ImportedHistory";
 import { reportingRangeIssue } from "../utils/dates";
 import { dateOnly } from "../models";
 import { useState } from "react";
@@ -96,6 +97,7 @@ export function ReportsPage() {
           From must be on or before To.
         </p>
       )}
+      <ImportedHistory from={range.from} to={range.to} />
       <div className="report-workspace">
         <nav aria-label="Report types" className="report-nav">
           {reports.map((r) => (
@@ -112,7 +114,6 @@ export function ReportsPage() {
         <Panel
           title={report}
           subtitle={`${locationName} · ${range.from} through ${range.to}`}
-          action={<ShopSelector />}
         >
           <div className="report-paper">
             <span className="eyebrow">BIG BOSS FINANCE · CAD</span>
