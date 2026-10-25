@@ -1,58 +1,61 @@
-# Big Boss Finance — local release
+# Big Boss Finance — owner guide
 
-On Windows 10/11, install Node.js 24 LTS once (nodejs.org). Use a current Microsoft Edge or Google Chrome. Extract the entire ZIP into a normal folder; do not launch inside the ZIP.
+## Open the program
 
-Double-click **Start Big Boss Finance.cmd**. The application opens in your default browser. Leave the helper window running and minimize it if desired. Close the helper after finishing. Double-click the launcher next time. Daily use needs no npm commands, development server, internet connection, login or paid subscription.
+Install Node.js 24 LTS once. Extract the complete Windows ZIP. Double-click **Start Big Boss Finance.cmd**, and leave the helper window running. The program opens at `http://127.0.0.1:47831`. Keep using the same browser and browser profile. No internet is needed for daily work.
 
-## First use
+## Your businesses
 
-1. Choose your saved business on the opening screen, or enter a business name and choose Create business profile. Each different business gets a separate profile. Use Switch profile to change businesses.
-2. Add stylists and agreed commission rates. Add bank/cash accounts using actual known opening balances and dates; never estimate balances.
-3. Enter Daily Sales: each stylist's service revenue, product sales and receipts. Check totals before saving.
-4. Enter other Transactions using their correct types. Transfers, loan principal, owner distributions and bank deposits are not ordinary expenses or extra revenue.
-5. Check Stylists & Commissions and record payments. Reports expense earned commissions; paying them does not create another expense.
+The opening screen lists separate businesses. Enter a name and Create Business. `Big Boss`, `Big Boss Hair Salon` and their Ltd. variants include the original four barbers automatically. You can also check the original Big Boss option when using another name. All other businesses start empty.
 
-## Backup and restore
+Switch Business returns to the chooser; opening a business returns to its dashboard. Rename it in Settings. Removing a business requires downloading a backup and typing its exact name. Removing one does not remove the others.
 
-In Data Management choose **Create Backup**, then **Download JSON**. Save it outside the application folder, preferably also on a second drive. Back up after each day's changes and before updates/imports. Internal recovery snapshots are not a substitute for downloaded files.
+## Restore the original records
 
-To restore downloaded JSON, select the file, preview changes, inspect conflicts and confirm the intended operation. Replacement additionally requires typing REPLACE: check the affected shop list. For manual exchange with another owner, export/send the file yourself, preview their file and resolve conflicts explicitly. Re-importing the same unchanged file does not duplicate records.
+Open Big Boss, then Data & Backup → Import JSON. Select `Big_Boss_Finance_Backup_2026-10-23.json`, inspect the preview and click Confirm Import. All 968 original transactions are retained, including zeros. The four barbers restore at 50%; Sale Product is not staff. Open the five recorded totals disclosure to compare the file.
 
-## Keep using the same browser
+The dashboard automatically shows the previous completed calendar month. Reports lets you select another month. Historical income/expense fields count without setting up accounts. Profit is revenue less recorded expenses; Contract Labour is not deducted again as earned commission.
 
-Records live in this browser profile at http://127.0.0.1:47831. Keep the same default browser and profile. Do not use private/incognito mode or clear this site's data. Another browser/profile has separate storage. An empty workspace there does not mean the original records were deleted. Records are not stored in the extracted release folder.
+The historical JSON does not contain individual daily barber sales or original opening balances. Those remain unavailable rather than being guessed. Historical Contract Labour expenses appear in the appropriate barber payment history. They are recorded payments under the original app's rule, not proof of a complete settlement.
 
-Existing development data at ports 5173/4173 uses separate storage. Export a full JSON backup from the old app, then import it here and check the restored totals. Preserve old storage until verified. For an update: download a backup, close the helper, extract the newer release and use its launcher with the same browser/profile/address.
+An original full backup copied from the HTML application's Show backup text can be pasted into Restore original backup text, or saved as JSON and selected with Import JSON. Its daily sales, staff, adjustments and balances are supported. Original Excel monthly sheets and Journal are supported under Import original Excel workbook. As in the original, this replaces saved days and the ledger; barber configuration, adjustments and statement balances are retained. A recovery backup is saved first, and you must type REPLACE before confirmation. Use the complete updated workbook. Set an actual opening balance in Settings and check Opening balance is known when the file does not provide one.
 
-Original history appears as provisional recorded figures. Bank debits are not assumed to be expenses. Accounting classification and balances still need supporting evidence before final statements or reconciliation can be relied upon.
+## Enter and correct a day
 
-## Troubleshooting
+Daily Sales: choose the date, enter each barber's service revenue and Sale Product, then enter debit/card receipts. Total, commission and cash calculate automatically. Product earns no commission. The original app permits card receipts higher than sales, giving negative calculated cash; this behavior is retained. Add notes and Save day.
 
-The launcher explains missing/old Node. Install/update to Node.js 24 LTS and retry. If another program occupies port 47831, close it and retry; changing ports changes the storage address. If the browser does not open, enter the address above. Keep the helper running. Reload if interrupted; do not clear browser data. Preserve downloaded backups.
+Choose a saved date or Edit beside a recent day to correct it. Saving recalculates its total from the rows. Existing sales deposits and historical commission rates stay with that day. Editing the date will not overwrite another saved day. Deleting a day asks for confirmation and retains its deletion for file exchange.
 
-The production app and local server are tested on Linux Chromium. The Windows command launcher is prepared but has not been executed on Windows. This is not a native/signed Windows installer. Check first launch, persistence and backup/restore on the intended Windows computer before live use. On macOS/Linux with Node, run `node server.mjs --open` from the extracted folder.
+If a saved daily total and imported transaction income occupy the same date, Reports asks which source represents the sale. Until resolved, only the recorded transaction income counts on that date. Choose both only when they are genuinely separate sales.
 
-## Everyday shortcuts
+## Expenses and bank
 
-Use Switch profile at the top to choose a different business. Its barbers, records, settings and backups stay separate. Existing multi-location backups remain together in their original saved profile, with advanced location controls in Settings. To add an expense, open Transactions → Add Transaction, choose Operating expense, enter the date, amount, category and paying account, then save. To pay a stylist, open Stylists & Commissions → Payment history → Pay Stylist, select the stylist/date/paying account and amount, then save the payment.
+Add expense or transfer. Select Expense, Transfer or Income, a date, category, payee/details and amount. An expense may be paid from bank or cash/Visa. Transfers move money without creating expenses; Loan Credit is into Chequing and Loan Payment is out. Professional Fee and Bank Fees retain the original sub-accounts.
 
-In Reports, choose the shop and reporting dates. Review revenue, operating expenses, earned commissions, profit and banking separately. Print / Save as PDF uses your browser. Needs review warnings mean some imported figures are excluded from operating reports.
+Search all transactions or filter by month. Edit keeps original ID, notes, unused monetary fields and original source snapshot. When an imported bank debit differs from its expense, Keep original bank amount preserves it. Original recorded amounts can be corrected explicitly in the disclosure. Delete asks for confirmation.
 
-Offline use: let the application finish loading once with the local helper available. The installed offline cache then opens all eight pages in the same browser/profile. JSON selection, previews and downloads also work without internet. Keep running the local helper for the normal daily launch; its presence does not require internet.
+Bank balances are in Show bank balances and Settings, not on the dashboard. Chequing follows the original opening-plus-receipts-minus-withdrawals rule. Operating Line changes after its statement date using Loan Credit/Loan Payment. Other statement balances remain as entered until edited.
 
+## Commissions
 
-## Existing imports and this update
+Summary shows service revenue, earned commission, Contract Labour paid, adjustments and difference. Positive difference means still owed; negative means recorded payments/adjustments exceed earned commission. A transaction-only historical import cannot establish the historical difference.
 
-The opening chooser automatically shows your existing business. Open it to keep using the records already imported; do not clear data or start over. Before installing an update, download a backup and close the old helper. Launch the new version using the same browser/profile and address. Accept the app update banner and reload if offered.
+Service earning periods are the 1st–15th and 16th–end. Payment and adjustment dates through the 22nd belong to the first period, matching the original. The Through date includes payments and adjustments whose associated period end has been reached. Use latest payment period follows the original shortcut.
 
-Open your existing Big Boss profile and click **Complete Legacy Migration**. Your saved transactions stay in place. The app restores Steven Hirmiz, Waseem Saleem, Aeden Kajo and Mattew Burns from the original application's configuration and links their historical records. You do not need to create these barbers manually or repeat the financial import.
+Add stylist payment creates a Contract Labour expense. Payments lets you edit earlier entries. Adjustments supports positive settled amounts and negative corrections. By pay period → View periods and corrections provides Fix with adjustment when earnings are known. Barbers lets you add, rename, set a rate or deactivate a barber without removing history. Rate changes do not rewrite already saved days.
 
-For a first import, select the original JSON. Leave **Restore the original four barbers** checked, review the destination and confirm. The original service commission default is 50%; product sales earn no barber commission. Existing agreed rates are preserved.
+## Share JSON with another owner
 
-The dashboard and Reports open with **Recorded Revenue**, **Recorded Expenses** and recorded bank movements. These are provisional original figures, with new posted entries included once. Use **Verified accounting entries** for classified bookkeeping. Bank withdrawals are not an expense total. The app does not guess bank balances.
+Export JSON downloads the whole selected business. Send the file yourself. The other owner creates an empty profile and imports it on first use. After both owners edit their copies, exchange exports and confirm merges. New IDs are combined; repeated files do not duplicate records. Independent edits to one record are shown side by side; choose the intended version. No timestamp decides for you. Deleted records stay deleted when older files arrive.
 
-Click **History** beside a barber to see linked historical expenses, bank movements and supported payment evidence. A payment amount and an amount owed are not the same. Some records need settlement review. Historical sales per barber and starting commission balances were not in the supplied transaction file, so the app cannot reconstruct their historical earned/outstanding commission. A full backup from the original browser's daily journal is needed for that.
+Files identifying another business are blocked in an existing nonempty profile. Create a separate empty profile to restore them. Download Backup is the same complete format as Export JSON. Recovery backups are created locally before imports/replacement; download them or Preview restore when needed. Replacement requires typing REPLACE and is intended for a complete backup.
 
-For new days, enter service revenue beside each barber, product sales and card receipts. Cash and 50% commissions calculate automatically; products have no barber commission. Choose actual receipt accounts. If there are no card receipts, only the cash account is required. Save once and edit that day if you need to correct it.
+## Existing previous-version data
 
-Use **Export business JSON** for a one-click download of this business. Save it somewhere safe after each day's work. Profiles and backups stay separate between businesses.
+The previous v0.6 databases are preserved and not automatically converted. Keep the prior program and a downloaded backup. This clean recreation imports the original JSON, original HTML backups and its own new exports. Do not delete prior storage while it contains entries you still need. The preceding version remains on GitHub main; this replacement is on faithful-recreation.
+
+## Offline, updates and limitations
+
+Load the app once with its local helper running. Its app code, fonts/icons and Excel reader are bundled and cached for offline use. Keep downloaded backups outside the browser; browser storage and local recovery snapshots can be cleared together.
+
+For updates, download a backup, close the helper, extract the newer release and launch it using the same browser/profile/address. Accept Update & reload only after finishing open forms. The extracted server is checked on Linux Chromium here; Windows launcher execution needs a Windows computer. This is a local browser application with a double-click helper, not a signed native installer.
