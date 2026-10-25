@@ -1,10 +1,11 @@
 import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
-  testDir: "./tests",
+  testDir: "./tests/faithful",
   workers: 1,
   use: {
     baseURL: "http://127.0.0.1:4173",
+    timezoneId: "America/Los_Angeles",
     launchOptions: {
       executablePath:
         process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ??
