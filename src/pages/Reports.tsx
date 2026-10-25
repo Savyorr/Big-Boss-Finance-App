@@ -185,8 +185,10 @@ export function ReportsPage() {
             )}
             {report !== "Recorded history" && summary.reviewCount > 0 && (
               <p className="error-message">
-                {summary.reviewCount} unclassified records are excluded. This
-                report needs classification review.
+                {summary.reviewCount} unclassified records are excluded
+                {report === "Commission Summary"
+                  ? " from the new-entry ledger. Linked historical barber records appear separately below."
+                  : ". This report needs classification review."}
               </p>
             )}
             {report === "Profit & Loss" && (
@@ -322,31 +324,47 @@ export function ReportsPage() {
               </>
             )}
             {report === "Commission Summary" && (
-              <DataTable
-                columns={[
-                  "Stylist",
-                  "Previous balance",
-                  "Earned",
-                  "Paid",
-                  "Adjustments",
-                  "Outstanding",
-                ]}
-                empty={!stylists.length}
-              >
-                {stylists.map((s) => {
-                  const c = commissionSummary(data, s.id, range.from, range.to);
-                  return (
-                    <tr key={s.id}>
-                      <td>{s.name}</td>
-                      <td>{formatMoney(c.previousCents)}</td>
-                      <td>{formatMoney(c.earnedCents)}</td>
-                      <td>{formatMoney(c.paidCents)}</td>
-                      <td>{formatMoney(c.adjustmentCents)}</td>
-                      <td>{formatMoney(c.outstandingCents)}</td>
-                    </tr>
-                  );
-                })}
-              </DataTable>
+              <>
+                <h3>New-entry commission ledger</h3>
+                {recorded.sourceCount > 0 && (
+                  <p className="notice">
+                    These balances cover new posted entries only. Historical
+                    opening balances and earned commissions are unavailable in
+                    the original transaction backup; $0.00 here does not mean a
+                    barber had no historical earnings or balance owed.
+                  </p>
+                )}
+                <DataTable
+                  columns={[
+                    "Stylist",
+                    "Previous balance",
+                    "Earned",
+                    "Paid",
+                    "Adjustments",
+                    "Outstanding",
+                  ]}
+                  empty={!stylists.length}
+                >
+                  {stylists.map((s) => {
+                    const c = commissionSummary(
+                      data,
+                      s.id,
+                      range.from,
+                      range.to,
+                    );
+                    return (
+                      <tr key={s.id}>
+                        <td>{s.name}</td>
+                        <td>{formatMoney(c.previousCents)}</td>
+                        <td>{formatMoney(c.earnedCents)}</td>
+                        <td>{formatMoney(c.paidCents)}</td>
+                        <td>{formatMoney(c.adjustmentCents)}</td>
+                        <td>{formatMoney(c.outstandingCents)}</td>
+                      </tr>
+                    );
+                  })}
+                </DataTable>
+              </>
             )}
             {report === "Commission Summary" && recorded.sourceCount > 0 && (
               <HistoricalBarberRecords from={range.from} to={range.to} />

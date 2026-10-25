@@ -21,10 +21,11 @@ export default function FinancialChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <AreaChart data={data}>
+      <AreaChart data={data} margin={{ left: 8, right: 16 }}>
         <CartesianGrid stroke="var(--border)" vertical={false} />
         <XAxis dataKey="period" stroke="var(--muted)" />
         <YAxis
+          width="auto"
           stroke="var(--muted)"
           tickFormatter={(value) => formatMoney(Math.round(value))}
         />
