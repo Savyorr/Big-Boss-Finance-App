@@ -13,6 +13,8 @@ async function nav(p: Page, name: string) {
   await expect(
     p.getByRole("heading", { name, exact: true, level: 1 }),
   ).toBeVisible();
+  if (name === "Dashboard")
+    await p.getByLabel("Dashboard month", { exact: true }).fill("2026-09");
 }
 async function capture(p: Page, name: string) {
   await mkdir("private/comprehensive-browser", { recursive: true });
@@ -90,7 +92,7 @@ test("actual legacy dashboard, historical completion, live cross-tab charts, com
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Next Month", exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await page
     .getByRole("button", { name: "Previous Month", exact: true })
     .click();
@@ -412,5 +414,157 @@ test("dashboard charts and full backup controls remain accessible in both themes
         nodes: v.nodes.map((n) => n.target),
       })),
     ).toEqual([]);
+  }
+});
+
+test("current-month chart preserves real September/October weekend records, fits mobile and restores a full backup", async ({
+  page,
+  browser,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-25T19:00:00Z") });
+  const original = JSON.parse(await readFile(path, "utf8"));
+  await create(page, "Big Boss");
+  await expect(page.getByLabel("Dashboard month", { exact: true })).toHaveValue(
+    "2026-10",
+  );
+  await importFile(page, path);
+  const before = await exportFile(page);
+  await nav(page, "Dashboard");
+  for (const month of ["2026-10", "2026-09"]) {
+    await page.getByLabel("Dashboard month", { exact: true }).fill(month);
+    const income = new Map<string, number>();
+    for (const t of original.transactions)
+      if (
+        t.date.startsWith(month) &&
+        (t.income !== 0 || t.category === "Revenue")
+      )
+        income.set(
+          t.date,
+          (income.get(t.date) ?? 0) + Math.round(t.income * 100),
+        );
+    await expect(page.locator(".daily-chart .recharts-area-dot")).toHaveCount(
+      income.size,
+    );
+    await page
+      .getByText("Daily income values and record coverage", { exact: true })
+      .click();
+    for (const [date, amount] of income) {
+      const row = page
+        .locator(".daily-income-panel tr")
+        .filter({ has: page.getByRole("cell", { name: date, exact: true }) });
+      await expect(row).toContainText(money(amount));
+      await page
+        .getByLabel("Select revenue day", { exact: true })
+        .selectOption(date);
+      await expect(page.locator(".selected-income")).toContainText(
+        money(amount),
+      );
+    }
+    if (month === "2026-10") {
+      await page
+        .getByLabel("Select revenue day", { exact: true })
+        .selectOption("2026-10-31");
+      await expect(page.locator(".selected-income")).toContainText(
+        "Missing record",
+      );
+    }
+    await page
+      .getByText("Daily income values and record coverage", { exact: true })
+      .click();
+    await capture(page, "08-chart-" + month);
+    const categories = page.locator(".expense-category");
+    const colours = await categories
+      .locator(".category-dot")
+      .evaluateAll((es) => es.map((e) => getComputedStyle(e).backgroundColor));
+    expect(new Set(colours).size).toBe(colours.length);
+    if (
+      original.transactions.some(
+        (t: any) => t.date.startsWith(month) && t.expense !== 0,
+      )
+    ) {
+      expect(colours.length).toBeGreaterThan(1);
+      await expect(categories.first().locator("strong")).toHaveCSS(
+        "color",
+        "rgb(35, 50, 71)",
+      );
+      await expect(categories.first().locator("small")).toHaveCSS(
+        "color",
+        "rgb(35, 50, 71)",
+      );
+    } else {
+      await expect(categories).toHaveCount(0);
+      await expect(
+        page.getByText("No recorded expenses in this month.", { exact: true }),
+      ).toBeVisible();
+    }
+    await expect(page.locator(".recharts-bar-rectangle").first()).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect
+      .poll(() =>
+        page
+          .locator(".daily-chart")
+          .evaluate((e) => e.scrollWidth <= e.clientWidth),
+      )
+      .toBe(true);
+    const inside = await page.locator(".daily-chart").evaluate((e) => {
+      const b = e.getBoundingClientRect();
+      return [...e.querySelectorAll(".recharts-area-dot")].every((d) => {
+        const r = d.getBoundingClientRect();
+        return (
+          r.left >= b.left &&
+          r.right <= b.right &&
+          r.top >= b.top &&
+          r.bottom <= b.bottom
+        );
+      });
+    });
+    expect(inside).toBe(true);
+    await capture(page, "09-mobile-" + month);
+    await page.setViewportSize({ width: 1280, height: 900 });
+  }
+  await nav(page, "Data & Backup");
+  await expect(
+    page.getByText("Restore original backup text", { exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByText("Import original Excel workbook", { exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByLabel("Restore Full Backup", { exact: true }),
+  ).toBeVisible();
+  await capture(page, "10-simple-data-backup");
+  const backup = await exportFile(page);
+  expect(canonical(backup.records)).toBe(canonical(before.records));
+  const fresh = await browser.newContext({
+    baseURL: "http://127.0.0.1:4173",
+    timezoneId: "America/Los_Angeles",
+  });
+  try {
+    const p = await fresh.newPage();
+    await create(p, "Restore test");
+    await nav(p, "Data & Backup");
+    await p.getByLabel("Restore Full Backup", { exact: true }).setInputFiles({
+      name: "restore.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(backup)),
+    });
+    await expect(
+      p.getByRole("heading", { name: "Review Changes", exact: true }),
+    ).toBeVisible();
+    await expect(
+      p.getByRole("button", { name: "Confirm Import", exact: true }),
+    ).toBeDisabled();
+    await p.getByLabel("Type REPLACE", { exact: true }).fill("REPLACE");
+    await p
+      .getByRole("button", { name: "Confirm Import", exact: true })
+      .click();
+    await expect(p.locator('p[role="status"]')).toContainText(
+      "Import complete",
+    );
+    const restored = await exportFile(p);
+    expect(canonical(restored.records)).toBe(canonical(backup.records));
+    expect(canonical(restored.sources)).toBe(canonical(backup.sources));
+  } finally {
+    await fresh.close();
   }
 });

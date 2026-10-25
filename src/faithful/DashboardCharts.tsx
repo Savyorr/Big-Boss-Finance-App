@@ -24,14 +24,18 @@ import {
 import type { expenseBreakdown, historicalMonths } from "./analytics";
 import { Field, Table } from "./ui";
 const palette = [
-  "#aa3d52",
-  "#c45f70",
-  "#8c476d",
-  "#bd8076",
-  "#a66887",
-  "#d5999e",
-  "#7f5272",
-  "#ad7290",
+  "#397DDE",
+  "#15965D",
+  "#DA8426",
+  "#8760BB",
+  "#158F9E",
+  "#D94C58",
+  "#AB7635",
+  "#64748B",
+  "#A65291",
+  "#76953F",
+  "#5866AD",
+  "#B45B31",
 ];
 const axis = { stroke: "var(--muted)", fontSize: 12 };
 const moneyTick = (n: number) => M(Math.round(n));
@@ -61,6 +65,10 @@ export default function DashboardCharts({
     data.daily.find((d) => d.date === selected) ??
     data.daily.find((d) => d.revenue !== null) ??
     data.daily[0];
+  const categoryColor = (category: string) =>
+    palette[
+      data.expenses.findIndex((e) => e.category === category) % palette.length
+    ];
   const signed = data.expenses.some((e) => e.amount < 0),
     positive = data.expenses.filter((e) => e.amount > 0);
   return (
@@ -84,17 +92,23 @@ export default function DashboardCharts({
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={data.daily}
-                margin={{ top: 12, right: 18, bottom: 10, left: 8 }}
+                margin={{ top: 20, right: 24, bottom: 16, left: 0 }}
               >
                 <CartesianGrid stroke="var(--line)" vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(v) => String(Number(v.slice(8)))}
-                  interval={0}
+                  interval="preserveStartEnd"
+                  padding={{ left: 8, right: 8 }}
                   tick={{ ...axis, fontSize: 10 }}
-                  minTickGap={0}
+                  minTickGap={8}
                 />
-                <YAxis width="auto" tick={axis} tickFormatter={moneyTick} />
+                <YAxis
+                  width="auto"
+                  padding={{ top: 12, bottom: 8 }}
+                  tick={axis}
+                  tickFormatter={moneyTick}
+                />
                 <Tooltip
                   content={({ active, payload, label }) => {
                     if (!active || !label) return null;
@@ -211,15 +225,13 @@ export default function DashboardCharts({
                     isAnimationActive={false}
                   >
                     {positive.map((e, i) => (
-                      <Cell
-                        key={e.category}
-                        fill={palette[i % palette.length]}
-                      />
+                      <Cell key={e.category} fill={categoryColor(e.category)} />
                     ))}
                   </Pie>
                   <Tooltip
                     formatter={(v: any, name) => [M(Number(v)) + " CAD", name]}
                     contentStyle={tipStyle}
+                    itemStyle={{ color: "var(--ink)" }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -232,11 +244,11 @@ export default function DashboardCharts({
                 <div className="expense-category" key={e.category}>
                   <span
                     className="category-dot"
-                    style={{ background: palette[i % palette.length] }}
+                    style={{ background: categoryColor(e.category) }}
                     aria-hidden="true"
                   />
                   <span>{e.category}</span>
-                  <strong className="expense">{M(e.amount)}</strong>
+                  <strong>{M(e.amount)}</strong>
                   <small>
                     {e.percent === null ? "—" : e.percent.toFixed(1) + "%"}
                   </small>
@@ -244,7 +256,7 @@ export default function DashboardCharts({
               ))}
               <div className="expense-total">
                 <strong>Total recorded expenses</strong>
-                <strong className="expense">{M(data.totals.expenses)}</strong>
+                <strong>{M(data.totals.expenses)}</strong>
               </div>
               {signed && (
                 <p className="muted small">
@@ -267,8 +279,8 @@ export default function DashboardCharts({
       <section className="panel" aria-labelledby="history-title">
         <h2 id="history-title">Historical Monthly Performance</h2>
         <p className="muted small">
-          12 completed months ending {monthName(month)}. Missing months have no
-          bars; recorded months may have incomplete coverage.
+          12 months ending {monthName(month)}. Missing months have no bars;
+          recorded months may have incomplete coverage.
         </p>
         <div
           className="chart-frame history-chart"
@@ -297,21 +309,42 @@ export default function DashboardCharts({
                 <YAxis width="auto" tick={axis} tickFormatter={moneyTick} />
                 <ReferenceLine y={0} stroke="var(--muted)" />
                 <Tooltip
-                  formatter={(v: any, name) => [M(Number(v)) + " CAD", name]}
-                  labelFormatter={(v) => monthName(String(v))}
-                  contentStyle={tipStyle}
+                  content={({ active, payload, label }) =>
+                    active && payload?.length ? (
+                      <div className="chart-tooltip">
+                        <strong>{monthName(String(label))}</strong>
+                        {payload.map((p) => (
+                          <p
+                            key={String(p.dataKey)}
+                            style={{
+                              color:
+                                p.dataKey === "revenue"
+                                  ? "var(--revenue-chart)"
+                                  : p.dataKey === "expenses" ||
+                                      (p.dataKey === "profit" &&
+                                        Number(p.value) < 0)
+                                    ? "var(--expense-chart)"
+                                    : "var(--profit-chart)",
+                            }}
+                          >
+                            {p.name}: {M(Number(p.value))} CAD
+                          </p>
+                        ))}
+                      </div>
+                    ) : null
+                  }
                 />
                 <Legend />
                 <Bar
                   dataKey="revenue"
                   name="Revenue"
-                  fill="var(--income)"
+                  fill="var(--revenue-chart)"
                   isAnimationActive={false}
                 />
                 <Bar
                   dataKey="expenses"
                   name="Expenses"
-                  fill="var(--expense)"
+                  fill="var(--expense-chart)"
                   isAnimationActive={false}
                 />
                 <Bar
@@ -325,7 +358,7 @@ export default function DashboardCharts({
                       key={m.month}
                       fill={
                         m.profit !== null && m.profit < 0
-                          ? "var(--expense)"
+                          ? "var(--expense-chart)"
                           : "var(--profit-chart)"
                       }
                     />

@@ -678,13 +678,17 @@ li {
   --income: #166b43;
   --expense: #b12e43;
   --income-soft: #d9eee2;
-  --profit-chart: #6557a9;
+  --profit-chart: #397dde;
+  --revenue-chart: #15965d;
+  --expense-chart: #d94c58;
 }
 :root[data-theme="dark"] {
   --income: #7bd3a5;
   --expense: #ff9fac;
   --income-soft: #304d49;
-  --profit-chart: #b2a1e5;
+  --profit-chart: #85b8ff;
+  --revenue-chart: #7bd3a5;
+  --expense-chart: #ff9fac;
 }
 .income {
   color: var(--income);
@@ -857,4 +861,14 @@ summary,
 }
 .chart-frame:focus-visible {
   outline: 3px solid var(--primary);
+}
+
+/* Fit every calendar date within the daily plot; preserve intentional null gaps. */
+.daily-chart .chart-canvas {
+  min-width: 0;
+  width: 100%;
+}
+.expense-legend,
+.expense-legend small {
+  color: var(--ink);
 }

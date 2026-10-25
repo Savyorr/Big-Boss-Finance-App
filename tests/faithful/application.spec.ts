@@ -174,6 +174,7 @@ test("original references, all required workflows, independent owners, safe sync
   );
   expect(tx.filter((e: any) => e.value.staffId)).toHaveLength(85);
   await nav(page, "Dashboard");
+  await page.getByLabel("Dashboard month", { exact: true }).fill("2026-09");
   await expect(
     page.getByRole("heading", { name: "September 2026", exact: true }),
   ).toBeVisible();
@@ -384,14 +385,14 @@ test("original references, all required workflows, independent owners, safe sync
   await nav(page, "Reports");
   await nav(page, "Dashboard");
   await expect(
-    page.getByRole("heading", { name: "December 2026", exact: true }),
+    page.getByRole("heading", { name: "January 2027", exact: true }),
   ).toBeVisible();
-  await shot(page, "11-january-previous-december");
+  await shot(page, "11-january-current-month");
   await page.clock.setFixedTime(new Date("2026-03-01T00:30:00Z"));
   await nav(page, "Reports");
   await nav(page, "Dashboard");
   await expect(
-    page.getByRole("heading", { name: "January 2026", exact: true }),
+    page.getByRole("heading", { name: "February 2026", exact: true }),
   ).toBeVisible();
   await page.clock.setFixedTime(new Date("2026-10-25T19:00:00Z"));
   await page
@@ -620,6 +621,7 @@ test("original full backup, Excel Journal, barber corrections, day deletion and 
     ],
   };
   await nav(page, "Data & Backup");
+  await page.getByText("Advanced migration utilities", { exact: true }).click();
   await page.getByText("Restore original backup text", { exact: true }).click();
   await page
     .getByLabel("Original backup text", { exact: true })
@@ -718,6 +720,7 @@ test("original full backup, Excel Journal, barber corrections, day deletion and 
     ]),
     "Journal",
   );
+  await page.getByText("Advanced migration utilities", { exact: true }).click();
   await page
     .getByText("Import original Excel workbook", { exact: true })
     .click();

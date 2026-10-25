@@ -155,9 +155,12 @@ try {
     "Monthly Financial Statistics",
     "Historical Monthly Performance",
   ]);
-  await expect(page.locator(".recharts-wrapper")).toHaveCount(3);
+  await expect(page.locator(".recharts-wrapper")).toHaveCount(2);
   await expect(
-    page.getByRole("heading", { name: "September 2026", exact: true }),
+    page.getByText("No recorded expenses in this month.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "October 2026", exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: resolve(evidence, "13-extracted-release-dashboard.png"),
@@ -206,6 +209,7 @@ try {
     "Journal",
   );
   await nav(page, "Data & Backup");
+  await page.getByText("Advanced migration utilities", { exact: true }).click();
   await page
     .getByText("Import original Excel workbook", { exact: true })
     .click();
@@ -257,9 +261,12 @@ try {
     "Monthly Financial Statistics",
     "Historical Monthly Performance",
   ]);
-  await expect(page.locator(".recharts-wrapper")).toHaveCount(3);
+  await expect(page.locator(".recharts-wrapper")).toHaveCount(2);
   await expect(
-    page.getByRole("heading", { name: "September 2026", exact: true }),
+    page.getByText("No recorded expenses in this month.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "October 2026", exact: true }),
   ).toBeVisible();
   await page.bringToFront();
   await page.evaluate(

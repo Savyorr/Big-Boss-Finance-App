@@ -18,7 +18,7 @@ export function DataPage({ db, all, run, notify, busy }: Common) {
       [db],
     ) ?? [];
   const totals = sourceTotals(all);
-  async function preview(file: File) {
+  async function preview(file: File, restore = false) {
     setPlan(null);
     setChoices({});
     setReplace(false);
@@ -28,7 +28,7 @@ export function DataPage({ db, all, run, notify, busy }: Common) {
     setFormat(result.format);
     setFilename(file.name);
     setPlan(p);
-    if (/\.xls[xm]$/i.test(file.name)) setReplace(true);
+    if (restore || /\.xls[xm]$/i.test(file.name)) setReplace(true);
   }
   return (
     <>
@@ -252,48 +252,6 @@ export function DataPage({ db, all, run, notify, busy }: Common) {
               </div>
             </div>
           )}
-          <details>
-            <summary>Restore original backup text</summary>
-            <Field label="Original backup text">
-              <textarea
-                value={paste}
-                onChange={(e) => setPaste(e.target.value)}
-                rows={4}
-              />
-            </Field>
-            <button
-              disabled={busy || !paste}
-              onClick={() =>
-                void run(() =>
-                  preview(
-                    new File([paste], "original-backup.json", {
-                      type: "application/json",
-                    }),
-                  ),
-                )
-              }
-            >
-              Preview backup text
-            </button>
-          </details>
-          <details>
-            <summary>Import original Excel workbook</summary>
-            <Field label="Original Excel workbook">
-              <input
-                type="file"
-                accept=".xlsx,.xlsm"
-                disabled={busy}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void run(() => preview(f));
-                }}
-              />
-            </Field>
-            <p className="muted small">
-              Monthly ledger sheets and Journal, matching the original
-              application. Check your opening balance in Settings after import.
-            </p>
-          </details>
         </Panel>
         <div>
           <Panel title="Export & backup">
@@ -311,19 +269,21 @@ export function DataPage({ db, all, run, notify, busy }: Common) {
               >
                 Export Full Backup
               </button>
-              <button
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    download(await exported(db), "BigBoss_Backup");
-                    notify(
-                      "Backup downloaded. Keep a copy outside this browser.",
-                    );
-                  })
-                }
-              >
-                Download Backup
-              </button>
+              <Field label="Restore Full Backup">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  disabled={busy}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void run(() => preview(f, true));
+                  }}
+                />
+              </Field>
+              <p className="muted small">
+                Restore a complete JSON backup. Review Changes and type REPLACE
+                before confirming. A recovery copy is saved first.
+              </p>
             </div>
             <p className="muted small">
               Send the JSON yourself by USB, email or WhatsApp. Clearing browser
@@ -380,6 +340,55 @@ export function DataPage({ db, all, run, notify, busy }: Common) {
           </Panel>
         </div>
       </div>
+      <details className="panel advanced-migration">
+        <summary>Advanced migration utilities</summary>
+        <p className="muted">
+          Only for recovery from the original application. For everyday backups
+          use Import JSON or Restore Full Backup above.
+        </p>{" "}
+        <details>
+          <summary>Restore original backup text</summary>
+          <Field label="Original backup text">
+            <textarea
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+              rows={4}
+            />
+          </Field>
+          <button
+            disabled={busy || !paste}
+            onClick={() =>
+              void run(() =>
+                preview(
+                  new File([paste], "original-backup.json", {
+                    type: "application/json",
+                  }),
+                ),
+              )
+            }
+          >
+            Preview backup text
+          </button>
+        </details>
+        <details>
+          <summary>Import original Excel workbook</summary>
+          <Field label="Original Excel workbook">
+            <input
+              type="file"
+              accept=".xlsx,.xlsm"
+              disabled={busy}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void run(() => preview(f));
+              }}
+            />
+          </Field>
+          <p className="muted small">
+            Monthly ledger sheets and Journal, matching the original
+            application. Check your opening balance in Settings after import.
+          </p>
+        </details>
+      </details>
     </>
   );
 }

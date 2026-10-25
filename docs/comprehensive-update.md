@@ -1,3 +1,5 @@
+> The current-month dashboard default, chart sizing/colours and migration utility placement are updated in [v1.1.1](chart-backup-update.md). This document records v1.1 verification.
+
 # Big Boss Finance 1.1 — comprehensive update
 
 This extends the existing faithful application, not its accounting system. Work remains on `faithful-recreation`; main is preserved. The recoverable baseline is commit `83be9617ca6633a9809d520372b96a57a823a246`, also named locally `checkpoint-before-comprehensive-update-1.0.0`. Original HTML and JSON remain unchanged and private; their hashes are in legacy-reference.md.

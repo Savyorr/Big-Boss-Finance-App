@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import {
   type Entity,
-  previousMonth,
+  today,
   monthName,
   summary,
   dailyIncome,
@@ -16,7 +16,7 @@ import {
 import { Field } from "./ui";
 const DashboardCharts = lazy(() => import("./DashboardCharts"));
 export function Dashboard({ all }: { all: Entity[] }) {
-  const latest = previousMonth(),
+  const latest = today().slice(0, 7),
     [month, setMonth] = useState(latest);
   const data = useMemo(
     () => ({
