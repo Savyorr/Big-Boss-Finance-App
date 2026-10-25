@@ -79,8 +79,9 @@ export default function DashboardCharts({
       >
         <h2 id="daily-income-title">Daily Income Graph</h2>
         <p className="muted small">
-          {monthName(month)} · Recorded revenue by day. Gaps mean no saved
-          revenue record; a saved zero is shown at $0.00.
+          {monthName(month)} · Solid lines show recorded revenue. Dashed lines
+          connect across missing days for visual continuity only; they are not
+          recorded revenue. A saved zero is shown at $0.00.
         </p>
         <div
           className="chart-frame daily-chart"
@@ -124,6 +125,21 @@ export default function DashboardCharts({
                       </div>
                     );
                   }}
+                />
+                <Area
+                  className="revenue-bridge"
+                  type="linear"
+                  dataKey="revenue"
+                  stroke="var(--income)"
+                  fill="none"
+                  strokeWidth={2}
+                  strokeDasharray="6 5"
+                  connectNulls
+                  dot={false}
+                  activeDot={false}
+                  tooltipType="none"
+                  legendType="none"
+                  isAnimationActive={false}
                 />
                 <Area
                   type="linear"

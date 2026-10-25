@@ -471,6 +471,16 @@ test("current-month chart preserves real September/October weekend records, fits
     await page
       .getByText("Daily income values and record coverage", { exact: true })
       .click();
+    const bridge = page.locator(".revenue-bridge .recharts-area-curve");
+    await expect(bridge).toHaveAttribute("stroke-dasharray", "6 5");
+    const bridgePath = await bridge.getAttribute("d");
+    expect(bridgePath?.match(/M/g)).toHaveLength(1);
+    await page
+      .getByLabel("Select revenue day", { exact: true })
+      .selectOption(month + (month === "2026-09" ? "-06" : "-04"));
+    await expect(page.locator(".selected-income")).toContainText(
+      "Missing record",
+    );
     await capture(page, "08-chart-" + month);
     const categories = page.locator(".expense-category");
     const colours = await categories

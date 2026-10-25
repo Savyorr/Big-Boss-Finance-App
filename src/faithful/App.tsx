@@ -306,7 +306,7 @@ function Workspace(p: WorkProps) {
         <div className="sidebar-foot">
           Your business. Your device.
           <br />
-          <small>Local & offline · v1.1.1</small>
+          <small>Local & offline · v1.1.2</small>
         </div>
       </aside>
       <div className="workspace">

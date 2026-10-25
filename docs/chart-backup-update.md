@@ -1,3 +1,5 @@
+> Daily chart gaps are now connected with clearly labelled dashed lines in [v1.1.2](connected-income-line.md), following the owner's visual correction. Financial data remains unchanged.
+
 # v1.1.1 — dashboard rendering and backup interface correction
 
 This focused update preserves financial calculations, source linking, stored transactions, full-backup contents and synchronization rules. No data migration, reseeding or database schema change is introduced. The preceding checkpoint remains Git commit `6621ac692f8a8fe03b7bfc87b48d12f15d7eeacc` on the same `faithful-recreation` branch.
