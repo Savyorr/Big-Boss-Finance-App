@@ -1,0 +1,43 @@
+node_modules/
+dist/
+*.local
+playwright-report/
+test-results/
+.env*
+!.env.example
+*.tsbuildinfo
+release/*
+!release/Big-Boss-Finance-Windows-local.zip
+
+# Private business records, exports, attachments and local audit evidence
+private/
+attachments/
+backups/
+financial-data/
+*Backup*.json
+*backup*.json
+BigBoss_*.json
+*.db
+*.sqlite
+*.sqlite3
+*.idb
+
+# Credentials and machine-specific configuration
+.aws/
+.ssh/
+.codex/
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*
+secrets*
+
+# JSON data files are private by default; only application configuration is tracked.
+*.json
+!/package.json
+!/package-lock.json
+!/tsconfig.json
+!/components.json
+*.log
+.DS_Store
