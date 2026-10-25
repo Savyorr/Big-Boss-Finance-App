@@ -13,6 +13,9 @@ import {
   bankAt,
   ledgerCategory,
   ledgerSub,
+  dailyBankReceipts,
+  commissionIncomplete,
+  revenueTransactions,
 } from "./model";
 import { Field, Table, Panel, Common } from "./ui";
 export function Reports({ db, all, run, notify, busy }: Common) {
@@ -25,7 +28,7 @@ export function Reports({ db, all, run, notify, busy }: Common) {
     s = settings(all),
     cats = new Map<string, { total: number; subs: Map<string, number> }>();
   for (const t of tx) {
-    if (t.value.expense <= 0) continue;
+    if (t.value.expense === 0) continue;
     const name = ledgerCategory(t.value),
       g = cats.get(name) ?? { total: 0, subs: new Map<string, number>() };
     g.total = sum(g.total, t.value.expense);
@@ -64,21 +67,26 @@ export function Reports({ db, all, run, notify, busy }: Common) {
       {r.overlapDates.length > 0 && (
         <Panel title="Sales recorded in two places">
           <p>
-            The following dates have both a daily total and recorded transaction
-            income. Until you choose, only the transaction income is counted for
-            each date.
+            Review daily totals alongside their recorded income. Existing
+            choices remain in effect unless the source identities change;
+            changed sources require confirmation. Choose both only for separate
+            sales.
           </p>
           {r.overlapDates.map((date) => (
             <div className="actions" key={date}>
               <strong>{date}</strong>
               <span className="muted small">
-                {s.overlaps[date]
+                {(rows(all, "day").find((d) => d.value.date === date)?.value
+                  .revenueLink?.resolution ?? s.overlaps[date])
                   ? "Chosen: " +
                     {
                       daily: "Daily sales",
                       ledger: "Transaction income",
                       both: "Both are separate sales",
-                    }[s.overlaps[date]]
+                    }[
+                      rows(all, "day").find((d) => d.value.date === date)?.value
+                        .revenueLink?.resolution ?? s.overlaps[date]
+                    ]
                   : "Choose the source"}
               </span>
               {(["daily", "ledger", "both"] as const).map((choice) => (
@@ -87,6 +95,42 @@ export function Reports({ db, all, run, notify, busy }: Common) {
                   key={choice}
                   onClick={() =>
                     void run(async () => {
+                      const linked = rows(all, "day").find(
+                        (d) => d.value.date === date && d.value.revenueLink,
+                      );
+                      if (linked && linked.value.revenueLink) {
+                        const sources = revenueTransactions(all, date);
+                        if (!sources.length && choice !== "both")
+                          throw Error(
+                            "The linked revenue was removed. Open Daily Sales to review it, or explicitly choose a separate sale.",
+                          );
+                        await write(
+                          db,
+                          revised(
+                            "day",
+                            linked.id,
+                            {
+                              ...linked.value,
+                              revenueLink: sources.length
+                                ? {
+                                    ...linked.value.revenueLink,
+                                    resolution: choice,
+                                    recordedTotal: sum(
+                                      ...sources.map((t) => t.value.income),
+                                    ),
+                                    sources: sources.map((t) => ({
+                                      id: t.id,
+                                      revision: t.revision,
+                                    })),
+                                  }
+                                : undefined,
+                            },
+                            linked,
+                          ),
+                        );
+                        notify("Revenue source saved for " + date);
+                        return;
+                      }
                       const old = rows(all, "settings")[0];
                       await write(
                         db,
@@ -116,7 +160,7 @@ export function Reports({ db, all, run, notify, busy }: Common) {
         <Table heads={["Measure", "CAD"]}>
           <tr className="total">
             <td>Revenue</td>
-            <td>{M(r.revenue)}</td>
+            <td className="income">{M(r.revenue)}</td>
           </tr>
           {days.length > 0 && (
             <>
@@ -132,7 +176,7 @@ export function Reports({ db, all, run, notify, busy }: Common) {
           )}
           <tr className="total">
             <td>Expenses</td>
-            <td>{M(r.expenses)}</td>
+            <td className="expense">{M(r.expenses)}</td>
           </tr>
           {[...cats]
             .sort((a, b) => b[1].total - a[1].total)
@@ -155,7 +199,9 @@ export function Reports({ db, all, run, notify, busy }: Common) {
             ))}
           <tr className="total">
             <td>Profit</td>
-            <td>{M(r.profit)}</td>
+            <td className={r.profit < 0 ? "expense" : "income"}>
+              {M(r.profit)}
+            </td>
           </tr>
         </Table>
         <p className="muted small">
@@ -164,12 +210,13 @@ export function Reports({ db, all, run, notify, busy }: Common) {
         </p>
       </Panel>
       <Panel title="Stylist commissions">
-        {s.historyIncomplete && days.length > 0 && (
-          <p className="muted small">
-            Service revenue and commission cover saved daily sales only;
-            historical individual earnings are unavailable.
-          </p>
-        )}
+        {commissionIncomplete(all, today(end), month + "-01") &&
+          days.length > 0 && (
+            <p className="muted small">
+              Service revenue and commission cover saved daily sales only;
+              historical individual earnings are unavailable.
+            </p>
+          )}
         <Table
           heads={[
             "Stylist",
@@ -182,12 +229,14 @@ export function Reports({ db, all, run, notify, busy }: Common) {
             <tr key={st.id}>
               <td>{st.value.name}</td>
               <td>
-                {s.historyIncomplete && !days.length
+                {commissionIncomplete(all, today(end), month + "-01") &&
+                !days.length
                   ? "Unavailable for historical backup"
                   : M(sum(...days.map((d) => d.sales[st.id] ?? 0)))}
               </td>
               <td>
-                {s.historyIncomplete && !days.length
+                {commissionIncomplete(all, today(end), month + "-01") &&
+                !days.length
                   ? "Unavailable for historical backup"
                   : M(earned(days, st.id))}
               </td>
@@ -226,7 +275,7 @@ export function Reports({ db, all, run, notify, busy }: Common) {
           </tr>
           <tr>
             <td>Card receipts and sales deposits</td>
-            <td>{M(sum(...days.map((d) => sum(d.card, d.deposit))))}</td>
+            <td>{M(sum(...days.map((d) => dailyBankReceipts(all, d))))}</td>
           </tr>
           <tr>
             <td>Loan Credit (drawn from Operating Line)</td>

@@ -4,6 +4,8 @@ import {
   Of,
   rows,
   settings,
+  commissionIncomplete,
+  rateForDate,
   today,
   formatMoney as M,
   moneyInput as I,
@@ -49,7 +51,7 @@ export function Commissions({ db, all, run, notify, busy }: Common) {
     adjustments = rows(all, "adjustment").filter(
       (a) => periodEnd(period(a.value.date, true)) <= through,
     );
-  const incomplete = settings(all).historyIncomplete;
+  const incomplete = commissionIncomplete(all, through);
   const periods = [
     ...new Set([
       ...days.map((d) => period(d.date)),
@@ -109,6 +111,22 @@ export function Commissions({ db, all, run, notify, busy }: Common) {
                         order: old?.value.order ?? staff.length,
                         active: text(f, "active") === "true",
                         rate: P(text(f, "rate")),
+                        rateHistory: [
+                          ...(old?.value.rateHistory ?? []),
+                          ...(old && old.value.rate !== P(text(f, "rate"))
+                            ? [
+                                {
+                                  effectiveDate: text(f, "effectiveDate"),
+                                  from: rateForDate(
+                                    old.value,
+                                    text(f, "effectiveDate"),
+                                  ),
+                                  to: P(text(f, "rate")),
+                                  changedAt: new Date().toISOString(),
+                                },
+                              ]
+                            : []),
+                        ],
                         ...(old?.value.raw ? { raw: old.value.raw } : {}),
                       },
                       old,
@@ -137,6 +155,14 @@ export function Commissions({ db, all, run, notify, busy }: Common) {
                     editingStaff === "new" ? "50" : I(editingStaff.value.rate)
                   }
                 />
+                <Field label="Rate effective from">
+                  <input
+                    name="effectiveDate"
+                    type="date"
+                    required
+                    defaultValue={today()}
+                  />
+                </Field>
                 <Field label="Status">
                   <select
                     name="active"
@@ -261,7 +287,7 @@ export function Commissions({ db, all, run, notify, busy }: Common) {
                         <td>
                           {incomplete && !days.length ? "Unavailable" : M(e)}
                         </td>
-                        <td>{M(paid)}</td>
+                        <td className="expense">{M(paid)}</td>
                         <td>{M(a)}</td>
                         <td>
                           {incomplete ? "Unavailable" : M(sum(e, -paid, -a))}

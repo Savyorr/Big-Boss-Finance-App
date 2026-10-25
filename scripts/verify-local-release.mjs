@@ -93,7 +93,9 @@ async function nav(page, name) {
 async function exportJSON(page) {
   await nav(page, "Data & Backup");
   const event = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export JSON", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Export Full Backup", exact: true })
+    .click();
   const d = await event;
   if (await d.failure()) throw Error("Packaged JSON download failed");
   return JSON.parse(await readFile(await d.path(), "utf8"));
@@ -131,7 +133,7 @@ try {
     .getByLabel("Import JSON file", { exact: true })
     .setInputFiles(fixture);
   await expect(
-    page.getByRole("heading", { name: "Import preview", exact: true }),
+    page.getByRole("heading", { name: "Review Changes", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Confirm Import", exact: true })
@@ -147,7 +149,16 @@ try {
     expect(tx.reduce((s, e) => s + e.value[k], 0)).toBe(v);
   await nav(page, "Dashboard");
   await expect(page.locator(".metric")).toHaveCount(3);
-  await expect(page.getByText("September 2026", { exact: true })).toBeVisible();
+  await expect(page.locator("main h2:not(.dashboard-month)")).toHaveText([
+    "Daily Income Graph",
+    "Expense Breakdown",
+    "Monthly Financial Statistics",
+    "Historical Monthly Performance",
+  ]);
+  await expect(page.locator(".recharts-wrapper")).toHaveCount(3);
+  await expect(
+    page.getByRole("heading", { name: "September 2026", exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: resolve(evidence, "13-extracted-release-dashboard.png"),
     fullPage: true,
@@ -207,7 +218,7 @@ try {
       buffer: Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" })),
     });
   await expect(
-    page.getByRole("heading", { name: "Import preview", exact: true }),
+    page.getByRole("heading", { name: "Review Changes", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Cancel preview", exact: true })
@@ -240,7 +251,16 @@ try {
   expect(canonical(offline.records)).toBe(canonical(before.records));
   await nav(page, "Dashboard");
   await expect(page.locator(".metric")).toHaveCount(3);
-  await expect(page.getByText("September 2026", { exact: true })).toBeVisible();
+  await expect(page.locator("main h2:not(.dashboard-month)")).toHaveText([
+    "Daily Income Graph",
+    "Expense Breakdown",
+    "Monthly Financial Statistics",
+    "Historical Monthly Performance",
+  ]);
+  await expect(page.locator(".recharts-wrapper")).toHaveCount(3);
+  await expect(
+    page.getByRole("heading", { name: "September 2026", exact: true }),
+  ).toBeVisible();
   await page.bringToFront();
   await page.evaluate(
     () =>

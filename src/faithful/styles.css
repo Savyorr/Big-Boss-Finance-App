@@ -7,13 +7,13 @@
     -apple-system,
     "Segoe UI",
     sans-serif;
-  --bg: #f4f7f6;
+  --bg: #f3f5f8;
   --surface: #fff;
-  --ink: #20332e;
-  --muted: #56685e;
-  --line: #dee7e2;
-  --primary: #137b65;
-  --soft: #e9f4ee;
+  --ink: #233247;
+  --muted: #546376;
+  --line: #dce3ec;
+  --primary: #466b9d;
+  --soft: #eaf0f8;
   --danger: #ac3440;
   color: var(--ink);
   background: var(--bg);
@@ -21,13 +21,13 @@
   font-synthesis: none;
 }
 :root[data-theme="dark"] {
-  --bg: #121c18;
-  --surface: #1a2822;
-  --ink: #e5eee9;
-  --muted: #a0b7aa;
-  --line: #33463b;
-  --primary: #63c5a5;
-  --soft: #233e32;
+  --bg: #20252d;
+  --surface: #2b3442;
+  --ink: #e4e9f0;
+  --muted: #bbc6d5;
+  --line: #4c5a70;
+  --primary: #466b9d;
+  --soft: #344359;
   --danger: #ff9da7;
   color-scheme: dark;
 }
@@ -75,7 +75,7 @@ button:disabled {
   background: var(--primary);
 }
 :root[data-theme="dark"] .primary {
-  color: #10271c;
+  color: #ffffff;
 }
 .danger {
   color: var(--danger);
@@ -426,7 +426,7 @@ summary {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: #061b17a8;
+  background: #111927bb;
   z-index: 50;
   display: flex;
   justify-content: center;
@@ -672,4 +672,189 @@ li {
 }
 .update-banner button {
   margin: 8px 5px 0 0;
+}
+
+:root {
+  --income: #166b43;
+  --expense: #b12e43;
+  --income-soft: #d9eee2;
+  --profit-chart: #6557a9;
+}
+:root[data-theme="dark"] {
+  --income: #7bd3a5;
+  --expense: #ff9fac;
+  --income-soft: #304d49;
+  --profit-chart: #b2a1e5;
+}
+.income {
+  color: var(--income);
+}
+.expense {
+  color: var(--expense);
+}
+.profit {
+  color: var(--income);
+}
+.brand > svg,
+.primary {
+  color: #fff;
+}
+.sidebar nav button.active,
+summary,
+.eyebrow {
+  color: var(--primary);
+}
+:root[data-theme="dark"] .sidebar nav button.active,
+:root[data-theme="dark"] summary,
+:root[data-theme="dark"] .eyebrow {
+  color: #b3cdf1;
+}
+.month-controls {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.month-controls .field {
+  margin: 0;
+}
+.dashboard-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.daily-income-panel {
+  margin-top: 10px;
+}
+.chart-frame {
+  width: 100%;
+  min-width: 0;
+  height: 330px;
+}
+.daily-chart {
+  height: 340px;
+}
+.donut-chart {
+  height: 280px;
+}
+.history-chart {
+  height: 330px;
+}
+.expense-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 24px;
+}
+.expense-category {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto 50px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.category-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.expense-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding-top: 20px;
+}
+.chart-selection {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.selected-income {
+  font-size: 14px;
+}
+.chart-tooltip {
+  padding: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.chart-tooltip p {
+  margin: 7px 0 0;
+}
+.comparison {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+}
+.monthly-statistics .three-cards {
+  margin-top: 15px;
+}
+.monthly-statistics > h2 {
+  margin: 18px 0;
+}
+.metric {
+  justify-content: flex-start;
+  gap: 12px;
+}
+.income-link {
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  border-radius: 10px;
+  margin: 15px 0;
+}
+.income-link p {
+  margin: 9px 0;
+}
+.recharts-default-legend {
+  color: var(--ink);
+}
+@media (max-width: 720px) {
+  .expense-layout {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .expense-category {
+    grid-template-columns: 10px minmax(0, 1fr) auto 45px;
+    gap: 5px;
+    font-size: 12px;
+  }
+  .month-controls {
+    gap: 8px;
+  }
+  .month-controls button {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .chart-frame {
+    height: 280px;
+  }
+  .history-chart {
+    height: 300px;
+  }
+  .chart-selection {
+    gap: 0;
+  }
+  .metric strong {
+    font-size: 32px;
+  }
+}
+
+.chart-canvas {
+  width: 100%;
+  height: 100%;
+  min-width: 640px;
+}
+.daily-chart,
+.history-chart {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.chart-frame:focus-visible {
+  outline: 3px solid var(--primary);
 }

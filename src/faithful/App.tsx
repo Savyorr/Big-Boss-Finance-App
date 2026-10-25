@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { profiles, BusinessDB, createBusiness, Profile } from "./store";
+import {
+  profiles,
+  BusinessDB,
+  createBusiness,
+  Profile,
+  write,
+  revised,
+} from "./store";
 import { settings } from "./model";
 import { Field, Panel, text } from "./ui";
 import {
@@ -125,7 +132,34 @@ export function App() {
       <div className="global-theme">
         <button
           aria-label={theme === "dark" ? "Use light theme" : "Use dark theme"}
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          disabled={busy}
+          onClick={() => {
+            const next = theme === "dark" ? "light" : "dark";
+            if (!profile) {
+              setTheme(next);
+              return;
+            }
+            void run(async () => {
+              const database = new BusinessDB(profile.id);
+              try {
+                const old = await database.records.get("settings");
+                if (!old || old.kind !== "settings")
+                  throw Error("Business settings unavailable");
+                await write(
+                  database,
+                  revised(
+                    "settings",
+                    old.id,
+                    { ...old.value, preferences: { theme: next } },
+                    old,
+                  ),
+                );
+                setTheme(next);
+              } finally {
+                database.close();
+              }
+            });
+          }}
         >
           {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>
@@ -200,6 +234,7 @@ export function App() {
         <Workspace
           key={profile.id}
           profile={profile}
+          onTheme={setTheme}
           page={page}
           setPage={(p) => {
             setPage(p);
@@ -219,6 +254,7 @@ export function App() {
   );
 }
 type WorkProps = {
+  onTheme: (theme: string) => void;
   profile: Profile;
   page: string;
   setPage: (p: string) => void;
@@ -241,6 +277,11 @@ function Workspace(p: WorkProps) {
   const common = { db, all, run: p.run, notify: p.setMessage, busy: p.busy };
   return (
     <>
+      <ProfileNameCache id={p.profile.id} name={s.name} />
+      <BusinessTheme
+        theme={s.preferences?.theme ?? "light"}
+        apply={p.onTheme}
+      />
       <aside className="sidebar">
         <div className="brand">
           <Crown />
@@ -265,7 +306,7 @@ function Workspace(p: WorkProps) {
         <div className="sidebar-foot">
           Your business. Your device.
           <br />
-          <small>Local & offline · v1.0</small>
+          <small>Local & offline · v1.1</small>
         </div>
       </aside>
       <div className="workspace">
@@ -312,4 +353,22 @@ function Workspace(p: WorkProps) {
       </div>
     </>
   );
+}
+
+function BusinessTheme({
+  theme,
+  apply,
+}: {
+  theme: string;
+  apply: (t: string) => void;
+}) {
+  useEffect(() => apply(theme), [theme, apply]);
+  return null;
+}
+
+function ProfileNameCache({ id, name }: { id: string; name: string }) {
+  useEffect(() => {
+    void profiles.update(id, { name }).catch(() => {});
+  }, [id, name]);
+  return null;
 }

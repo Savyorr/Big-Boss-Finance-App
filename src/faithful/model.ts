@@ -24,6 +24,16 @@ export const staffSchema = z.object({
   name: z.string().trim().min(1).max(100),
   active: z.boolean(),
   rate: z.number().int().min(0).max(10000),
+  rateHistory: z
+    .array(
+      z.object({
+        effectiveDate: dateSchema,
+        from: z.number().int().min(0).max(10000),
+        to: z.number().int().min(0).max(10000),
+        changedAt: z.string(),
+      }),
+    )
+    .optional(),
   raw,
 });
 export const daySchema = z.object({
@@ -35,6 +45,14 @@ export const daySchema = z.object({
   card: nonnegative,
   deposit: nonnegative,
   notes: z.string(),
+  tips: nonnegative.optional(),
+  revenueLink: z
+    .object({
+      sources: z.array(z.object({ id, revision: id })).min(1),
+      resolution: z.enum(["ledger", "daily", "both"]),
+      recordedTotal: money,
+    })
+    .optional(),
   raw,
 });
 export const txSchema = z.object({
@@ -69,6 +87,7 @@ export const settingsSchema = z.object({
   balances: z.array(z.object({ name: z.string(), amount: money })),
   overlaps: z.record(dateSchema, z.enum(["daily", "ledger", "both"])),
   historyIncomplete: z.boolean(),
+  preferences: z.object({ theme: z.enum(["light", "dark"]) }).optional(),
   raw,
 });
 const base = {
@@ -92,13 +111,36 @@ export type Day = z.infer<typeof daySchema>;
 export type Tx = z.infer<typeof txSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 export type Adjustment = z.infer<typeof adjustmentSchema>;
-export const envelopeSchema = z.object({
+export const snapshotSchema = z.object({
   app: z.literal("Big Boss Finance Faithful"),
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   businessId: id,
   exportedAt: z.string(),
   records: z.array(entitySchema).max(100000),
   sources: z.array(z.object({ id, format: z.string(), raw: z.unknown() })),
+});
+export const envelopeSchema = snapshotSchema.extend({
+  recoveryArchive: z
+    .object({
+      records: z.array(entitySchema).max(100000),
+      sources: snapshotSchema.shape.sources,
+      snapshots: z.array(
+        z.object({
+          id,
+          created: z.string(),
+          app: z.literal("Big Boss Finance Faithful"),
+          version: z.union([z.literal(1), z.literal(2)]),
+          businessId: id,
+          exportedAt: z.string(),
+          recordRefs: z.array(z.string().min(1).max(700)).max(100000),
+          sourceRefs: z.array(id),
+        }),
+      ),
+    })
+    .optional(),
+  recoveryBackups: z
+    .array(z.object({ id, created: z.string(), envelope: snapshotSchema }))
+    .optional(),
 });
 export type Envelope = z.infer<typeof envelopeSchema>;
 export function rows<K extends Kind>(all: Entity[], kind: K): Of<K>[] {
@@ -161,45 +203,126 @@ export function dayCommission(d: Day) {
     n += BigInt(c) * BigInt(d.rates[id] ?? 5000);
   return safeCents((n + 5000n) / 10000n);
 }
+export function revenueTransactions(all: Entity[], date: string) {
+  return rows(all, "tx").filter(
+    (e) =>
+      e.value.date === date &&
+      (e.value.income !== 0 || e.value.category === "Revenue"),
+  );
+}
+export function rateForDate(staff: Staff, date: string) {
+  const h = [...(staff.rateHistory ?? [])].sort(
+    (a, b) =>
+      a.effectiveDate.localeCompare(b.effectiveDate) ||
+      a.changedAt.localeCompare(b.changedAt),
+  );
+  return (
+    h.filter((e) => e.effectiveDate <= date).at(-1)?.to ??
+    h[0]?.from ??
+    staff.rate
+  );
+}
+export function incomeIndex(all: Entity[]) {
+  const tx = new Map<string, Of<"tx">[]>(),
+    days = new Map(rows(all, "day").map((e) => [e.value.date, e]));
+  for (const e of rows(all, "tx"))
+    if (e.value.income !== 0 || e.value.category === "Revenue") {
+      const a = tx.get(e.value.date) ?? [];
+      a.push(e);
+      tx.set(e.value.date, a);
+    }
+  const prefs = settings(all),
+    out = new Map<
+      string,
+      {
+        date: string;
+        revenue: number | null;
+        recorded: number;
+        sourceIds: string[];
+        ambiguous: boolean;
+        overlap: boolean;
+        stale: boolean;
+      }
+    >();
+  for (const date of new Set([...tx.keys(), ...days.keys()])) {
+    const t = tx.get(date) ?? [],
+      d = days.get(date)?.value,
+      recorded = addCents(...t.map((e) => e.value.income));
+    const link = d?.revenueLink;
+    const identityChanged =
+      !!link &&
+      (link.sources.length !== t.length ||
+        link.sources.some((s) => !t.some((e) => e.id === s.id)));
+    const stale =
+      identityChanged || (!!link && link.recordedTotal !== recorded);
+    const decision = identityChanged
+      ? "ledger"
+      : (link?.resolution ?? prefs.overlaps[date] ?? "ledger");
+    const overlap = !!d && t.length > 0,
+      ambiguous = (overlap && !link && !prefs.overlaps[date]) || stale;
+    const revenue =
+      link && !t.length && decision === "ledger"
+        ? null
+        : overlap
+          ? decision === "daily"
+            ? d!.total
+            : decision === "both"
+              ? addCents(recorded, d!.total)
+              : recorded
+          : d && !link
+            ? d.total
+            : t.length
+              ? recorded
+              : null;
+    out.set(date, {
+      date,
+      revenue,
+      recorded,
+      sourceIds: t.map((e) => e.id),
+      ambiguous,
+      overlap,
+      stale,
+    });
+  }
+  return out;
+}
+export function calendarMonth(month: string) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+    throw Error("Select a valid month");
+  const [y, m] = month.split("-").map(Number);
+  return Array.from(
+    { length: new Date(y, m, 0).getDate() },
+    (_, i) => month + "-" + String(i + 1).padStart(2, "0"),
+  );
+}
+export function dailyIncome(all: Entity[], month: string) {
+  const index = incomeIndex(all);
+  return calendarMonth(month).map((date) => ({
+    ...index.get(date),
+    date,
+    revenue: index.get(date)?.revenue ?? null,
+    status:
+      index.get(date)?.revenue === null || !index.has(date)
+        ? "Missing record"
+        : index.get(date)?.revenue === 0
+          ? "Confirmed zero"
+          : "Recorded revenue",
+  }));
+}
 export function summary(all: Entity[], month: string) {
   const days = rows(all, "day").filter((e) => e.value.date.startsWith(month)),
     tx = rows(all, "tx").filter((e) => e.value.date.startsWith(month));
-  const s = settings(all),
-    dates = new Set([
-      ...days.map((e) => e.value.date),
-      ...tx.map((e) => e.value.date),
-    ]);
-  let revenue = 0;
-  const overlaps: string[] = [],
-    overlapDates: string[] = [];
-  for (const date of dates) {
-    const daily = addCents(
-      ...days.filter((e) => e.value.date === date).map((e) => e.value.total),
-    );
-    const ledger = addCents(
-      ...tx.filter((e) => e.value.date === date).map((e) => e.value.income),
-    );
-    if (daily && ledger) {
-      overlapDates.push(date);
-      const decision = s.overlaps[date];
-      if (!decision) overlaps.push(date);
-      revenue = addCents(
-        revenue,
-        decision === "daily"
-          ? daily
-          : decision === "both"
-            ? addCents(daily, ledger)
-            : ledger,
-      );
-    } else revenue = addCents(revenue, daily, ledger);
-  }
-  const expenses = addCents(...tx.map((e) => e.value.expense));
+  const income = [...incomeIndex(all).values()].filter((e) =>
+    e.date.startsWith(month),
+  );
+  const revenue = addCents(...income.map((e) => e.revenue ?? 0)),
+    expenses = addCents(...tx.map((e) => e.value.expense));
   return {
     revenue,
     expenses,
     profit: addCents(revenue, -expenses),
-    overlaps,
-    overlapDates,
+    overlaps: income.filter((e) => e.ambiguous).map((e) => e.date),
+    overlapDates: income.filter((e) => e.overlap || e.stale).map((e) => e.date),
     days: days.length,
     card: addCents(...days.map((e) => e.value.card)),
     product: addCents(...days.map((e) => e.value.product)),
@@ -214,12 +337,43 @@ export function sourceTotals(all: Entity[]) {
     ]),
   ) as Record<string, number>;
 }
+export function dailyBankReceipts(all: Entity[], d: Day) {
+  const link = d.revenueLink;
+  if (link && link.resolution !== "both") return 0;
+  if (
+    !link &&
+    revenueTransactions(all, d.date).length &&
+    settings(all).overlaps[d.date] !== "both"
+  )
+    return 0;
+  return addCents(d.card, d.deposit);
+}
+export function commissionIncomplete(
+  all: Entity[],
+  through: string,
+  from = "0001-01-01",
+) {
+  if (!settings(all).historyIncomplete) return false;
+  const dates = [...incomeIndex(all).values()].filter(
+    (d) => d.date >= from && d.date <= through && d.recorded > 0,
+  );
+  const dayMap = new Map(rows(all, "day").map((d) => [d.value.date, d.value]));
+  return dates.some((d) => {
+    const day = dayMap.get(d.date);
+    return (
+      !day ||
+      !day.revenueLink ||
+      d.stale ||
+      addCents(...Object.values(day.sales), day.product) !== d.recorded
+    );
+  });
+}
 export function bankAt(all: Entity[], date: string) {
   return addCents(
     settings(all).opening,
     ...rows(all, "day")
       .filter((e) => e.value.date <= date)
-      .map((e) => addCents(e.value.card, e.value.deposit)),
+      .map((e) => dailyBankReceipts(all, e.value)),
     ...rows(all, "tx")
       .filter((e) => e.value.date <= date)
       .map((e) =>
@@ -289,6 +443,7 @@ export function ledgerSub(t: Tx) {
   return "";
 }
 export function validateRecords(records: Entity[]) {
+  const byId = new Map(records.map((e) => [e.id, e]));
   const ids = new Set<string>(),
     staff = new Set(records.filter((e) => e.kind === "staff").map((e) => e.id));
   let settingsCount = 0;
@@ -306,6 +461,18 @@ export function validateRecords(records: Entity[]) {
           "Two different saved days use the same date. Resolve the date conflict first.",
         );
       dates.add(e.value.date);
+    }
+    if (e.kind === "day" && e.value.revenueLink) {
+      for (const src of e.value.revenueLink.sources)
+        if (byId.get(src.id)?.kind !== "tx")
+          throw Error(
+            "A daily breakdown refers to a missing source transaction",
+          );
+      if (
+        new Set(e.value.revenueLink.sources.map((s) => s.id)).size !==
+        e.value.revenueLink.sources.length
+      )
+        throw Error("Duplicate daily source link");
     }
     const refs =
       e.kind === "day"

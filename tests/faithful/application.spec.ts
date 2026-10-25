@@ -49,7 +49,9 @@ async function create(p: Page, name: string) {
 async function exportJSON(p: Page) {
   await nav(p, "Data & Backup");
   const event = p.waitForEvent("download");
-  await p.getByRole("button", { name: "Export JSON", exact: true }).click();
+  await p
+    .getByRole("button", { name: "Export Full Backup", exact: true })
+    .click();
   const d = await event;
   const failure = await d.failure();
   if (failure)
@@ -65,7 +67,7 @@ async function importJSON(
   await nav(p, "Data & Backup");
   await p.getByLabel("Import JSON file", { exact: true }).setInputFiles(file);
   await expect(
-    p.getByRole("heading", { name: "Import preview", exact: true }),
+    p.getByRole("heading", { name: "Review Changes", exact: true }),
   ).toBeVisible({ timeout: 20000 });
 }
 async function confirm(p: Page) {
@@ -172,7 +174,9 @@ test("original references, all required workflows, independent owners, safe sync
   );
   expect(tx.filter((e: any) => e.value.staffId)).toHaveLength(85);
   await nav(page, "Dashboard");
-  await expect(page.getByText("September 2026", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "September 2026", exact: true }),
+  ).toBeVisible();
   await expect(page.locator(".metric")).toHaveCount(3);
   const sept = original.transactions.filter((t: any) =>
     t.date.startsWith("2026-09"),
@@ -379,12 +383,16 @@ test("original references, all required workflows, independent owners, safe sync
   await page.clock.setFixedTime(new Date("2027-01-01T10:00:00Z"));
   await nav(page, "Reports");
   await nav(page, "Dashboard");
-  await expect(page.getByText("December 2026", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "December 2026", exact: true }),
+  ).toBeVisible();
   await shot(page, "11-january-previous-december");
   await page.clock.setFixedTime(new Date("2026-03-01T00:30:00Z"));
   await nav(page, "Reports");
   await nav(page, "Dashboard");
-  await expect(page.getByText("January 2026", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "January 2026", exact: true }),
+  ).toBeVisible();
   await page.clock.setFixedTime(new Date("2026-10-25T19:00:00Z"));
   await page
     .getByRole("button", { name: "Use dark theme", exact: true })
@@ -620,7 +628,7 @@ test("original full backup, Excel Journal, barber corrections, day deletion and 
     .getByRole("button", { name: "Preview backup text", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Import preview", exact: true }),
+    page.getByRole("heading", { name: "Review Changes", exact: true }),
   ).toBeVisible();
   await confirm(page);
   await nav(page, "Daily Sales");
@@ -724,7 +732,7 @@ test("original full backup, Excel Journal, barber corrections, day deletion and 
       ),
     });
   await expect(
-    page.getByRole("heading", { name: "Import preview", exact: true }),
+    page.getByRole("heading", { name: "Review Changes", exact: true }),
   ).toBeVisible();
   await page.getByLabel("Type REPLACE", { exact: true }).fill("REPLACE");
   await confirm(page);

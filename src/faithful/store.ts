@@ -1,3 +1,5 @@
+import { packBackup, unpackBackup } from "./backup";
+import { MAX_FILE_BYTES } from "../services/exchange/json";
 import Dexie, { type Table } from "dexie";
 import {
   entitySchema,
@@ -7,6 +9,7 @@ import {
   envelopeSchema,
   validateRecords,
   today,
+  revenueTransactions,
 } from "./model";
 import { canonical } from "../services/exchange/json";
 import { ORIGINAL_BARBERS } from "../config/original-business";
@@ -63,6 +66,7 @@ export async function createBusiness(name: string, original = false) {
           balances: [],
           overlaps: {},
           historyIncomplete: false,
+          preferences: { theme: "light" },
         }),
       );
       if (original)
@@ -92,6 +96,20 @@ export async function write(db: BusinessDB, e: Entity) {
       );
     const all = await db.records.toArray();
     const candidate = all.filter((x) => x.id !== e.id).concat(e);
+    if (e.kind === "day" && e.value.revenueLink) {
+      const actual = revenueTransactions(all, e.value.date);
+      const expected = e.value.revenueLink.sources;
+      if (
+        actual.length !== expected.length ||
+        expected.some(
+          (s) =>
+            !actual.some((t) => t.id === s.id && t.revision === s.revision),
+        )
+      )
+        throw Error(
+          "Recorded income changed while this breakdown was open. Reload the date before saving.",
+        );
+    }
     validateRecords(candidate);
     await db.records.put(e);
   });
@@ -106,20 +124,43 @@ export async function remove(db: BusinessDB, e: Entity) {
     ancestors: [...e.ancestors, e.revision],
   });
 }
-export async function exported(db: BusinessDB): Promise<Envelope> {
-  return db.transaction("r", [db.records, db.meta, db.sources], async () =>
-    envelopeSchema.parse({
-      app: "Big Boss Finance Faithful",
-      version: 1,
-      businessId: (await db.meta.get("businessId"))!.value,
-      exportedAt: new Date().toISOString(),
-      records: await db.records.toArray(),
-      sources: await db.sources.toArray(),
-    }),
+export async function exported(
+  db: BusinessDB,
+  includeRecovery = true,
+): Promise<Envelope> {
+  return db.transaction(
+    "r",
+    [db.records, db.meta, db.sources, db.backups],
+    async () =>
+      envelopeSchema.parse({
+        app: "Big Boss Finance Faithful",
+        version: 2,
+        businessId: (await db.meta.get("businessId"))!.value,
+        exportedAt: new Date().toISOString(),
+        records: await db.records.toArray(),
+        sources: await db.sources.toArray(),
+        ...(includeRecovery
+          ? { recoveryBackups: await db.backups.toArray() }
+          : {}),
+      }),
   );
 }
 export function download(value: unknown, name = "BigBoss_Backup") {
-  const blob = new Blob([JSON.stringify(value, null, 2)], {
+  const payload = JSON.stringify(
+    value &&
+      typeof value === "object" &&
+      "app" in value &&
+      (value as { app: string }).app === "Big Boss Finance Faithful"
+      ? packBackup(value as Envelope)
+      : value,
+    null,
+    2,
+  );
+  if (new TextEncoder().encode(payload).length > MAX_FILE_BYTES)
+    throw Error(
+      "This complete backup exceeds the supported 25 MB import limit. Nothing was omitted or downloaded.",
+    );
+  const blob = new Blob([payload], {
       type: "application/json",
     }),
     url = URL.createObjectURL(blob),
@@ -132,7 +173,7 @@ export function download(value: unknown, name = "BigBoss_Backup") {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export async function recovery(db: BusinessDB) {
-  const envelope = await exported(db),
+  const envelope = await exported(db, false),
     id = crypto.randomUUID();
   await db.backups.add({ id, created: new Date().toISOString(), envelope });
   return id;
@@ -176,7 +217,10 @@ export async function planImport(
   db: BusinessDB,
   incoming: Envelope,
 ): Promise<Plan> {
+  incoming = unpackBackup(incoming);
   envelopeSchema.parse(incoming);
+  for (const b of incoming.recoveryBackups ?? [])
+    validateRecords(b.envelope.records);
   validateRecords(incoming.records);
   const current = await exported(db);
   // An untouched original roster is a first-run convenience, not an existing
@@ -204,7 +248,11 @@ export async function planImport(
   return {
     ...merge,
     incoming,
-    baseline: canonical(current.records),
+    baseline: canonical({
+      records: current.records,
+      sources: current.sources,
+      businessId: current.businessId,
+    }),
     adopt: mismatch,
   };
 }
@@ -215,39 +263,55 @@ export async function applyPlan(
   replace = false,
 ) {
   await recovery(db);
-  await db.transaction("rw", [db.records, db.meta, db.sources], async () => {
-    const current = await db.records.toArray();
-    if (canonical(current) !== plan.baseline)
-      throw Error(
-        "Business data changed after preview. Select the file again.",
-      );
-    let candidate = replace ? [...plan.incoming.records] : [...plan.records];
-    if (!replace)
-      for (const c of plan.conflicts) {
-        const choice = choices[c.id];
-        if (!choice) throw Error("Choose a version for every conflict");
-        const selected = choice === "local" ? c.local : c.incoming;
-        const merged = {
-          ...selected,
-          revision: crypto.randomUUID(),
-          ancestors: [
-            ...new Set([
-              ...c.local.ancestors,
-              c.local.revision,
-              ...c.incoming.ancestors,
-              c.incoming.revision,
-            ]),
-          ],
-        };
-        candidate = candidate.filter((e) => e.id !== c.id).concat(merged);
+  await db.transaction(
+    "rw",
+    [db.records, db.meta, db.sources, db.backups],
+    async () => {
+      const current = await db.records.toArray();
+      if (
+        canonical({
+          records: current,
+          sources: await db.sources.toArray(),
+          businessId: (await db.meta.get("businessId"))!.value,
+        }) !== plan.baseline
+      )
+        throw Error(
+          "Business data changed after preview. Select the file again.",
+        );
+      let candidate = replace ? [...plan.incoming.records] : [...plan.records];
+      if (!replace)
+        for (const c of plan.conflicts) {
+          const choice = choices[c.id];
+          if (!choice) throw Error("Choose a version for every conflict");
+          const selected = choice === "local" ? c.local : c.incoming;
+          const merged = {
+            ...selected,
+            revision: crypto.randomUUID(),
+            ancestors: [
+              ...new Set([
+                ...c.local.ancestors,
+                c.local.revision,
+                ...c.incoming.ancestors,
+                c.incoming.revision,
+              ]),
+            ],
+          };
+          candidate = candidate.filter((e) => e.id !== c.id).concat(merged);
+        }
+      validateRecords(candidate);
+      await db.records.clear();
+      await db.records.bulkPut(candidate);
+      await db.meta.put({ key: "businessId", value: plan.incoming.businessId });
+      if (replace) await db.sources.clear();
+      await db.sources.bulkPut(plan.incoming.sources);
+      for (const backup of plan.incoming.recoveryBackups ?? []) {
+        const old = await db.backups.get(backup.id);
+        if (old && canonical(old) !== canonical(backup))
+          throw Error("A recovery snapshot ID contains conflicting data");
+        if (!old) await db.backups.add(backup);
       }
-    validateRecords(candidate);
-    await db.records.clear();
-    await db.records.bulkPut(candidate);
-    await db.meta.put({ key: "businessId", value: plan.incoming.businessId });
-    if (replace) await db.sources.clear();
-    await db.sources.bulkPut(plan.incoming.sources);
-  });
+    },
+  );
 }
 export async function renameBusiness(p: Profile, name: string) {
   const db = new BusinessDB(p.id);

@@ -9,7 +9,7 @@ The owner's latest full-rebuild request supersedes the previous staged accountin
 - Match original daily service/product/card/cash calculations, allowing negative calculated cash when card receipts exceed sales. Product sales have no commission. Defaults: Steven Hirmiz, Waseem Saleem, Aeden Kajo, Mattew Burns at 50%.
 - Original commission earnings periods split after the 15th. Payments/adjustments split after the 22nd and are included through their associated period end. Paid means recorded Contract Labour expense; difference = earned − paid − adjustments. Do not fabricate absent historical service revenue or liabilities.
 - Original reports use recorded expenses, including Contract Labour once, and revenue from saved daily totals. Legacy transaction-only income supplies revenue when daily details are absent. Overlapping sources require a per-date owner choice; do not sum them silently.
-- The dashboard has exactly Revenue, Expenses, Profit for the previous completed month calculated from the local calendar date. No charts, bank statistics, warnings or extra cards.
+- The latest comprehensive update supersedes the earlier no-chart dashboard rule. Exact section order: Daily Income Graph, Expense Breakdown, Monthly Financial Statistics (Revenue, Expenses, Profit), Historical Monthly Performance. Default to the previous completed local calendar month. Shared revenue resolution must prevent linked historical breakdowns from duplicating either income or bank receipts. Missing records differ from confirmed zero days.
 
 ## Data and synchronization
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { write, revised, remove } from "./store";
 import {
   Entity,
@@ -11,6 +11,9 @@ import {
   addCents as sum,
   earned,
   dayCommission,
+  revenueTransactions,
+  rateForDate,
+  settings,
 } from "./model";
 import { Field, Table, Panel, Confirm, Common } from "./ui";
 export function Daily({ db, all, run, notify, busy }: Common) {
@@ -18,7 +21,13 @@ export function Daily({ db, all, run, notify, busy }: Common) {
     [editing, setEditing] = useState<string | null>(null),
     [draft, setDraft] = useState<Record<string, string>>({}),
     [card, setCard] = useState("0"),
-    [notes, setNotes] = useState("");
+    [notes, setNotes] = useState(""),
+    [tips, setTips] = useState(""),
+    [deposit, setDeposit] = useState("0"),
+    [confirmed, setConfirmed] = useState(false),
+    [resolution, setResolution] = useState<"ledger" | "daily" | "both">(
+      "ledger",
+    );
   const staff = rows(all, "staff").filter(
     (s) => s.value.active || !!draft[s.id],
   );
@@ -28,6 +37,13 @@ export function Daily({ db, all, run, notify, busy }: Common) {
   const saved = editing
     ? days.find((d) => d.id === editing)
     : days.find((d) => d.value.date === date);
+  const sources = useMemo(() => revenueTransactions(all, date), [all, date]),
+    recorded = sum(...sources.map((e) => e.value.income));
+  const needsConfirmation = sources.length > 0 || !!saved?.value.revenueLink;
+  const sourceFingerprint = sources
+    .map((t) => t.id + ":" + t.revision)
+    .join("|");
+  useEffect(() => setConfirmed(false), [sourceFingerprint]);
   const [deleting, setDeleting] = useState<Entity | null>(null);
   function load(d: string) {
     setDate(d);
@@ -41,8 +57,23 @@ export function Daily({ db, all, run, notify, busy }: Common) {
           ])
         : {},
     );
-    setCard(e ? I(e.value.card) : "0");
+    setCard(
+      e
+        ? I(e.value.card)
+        : I(sum(...revenueTransactions(all, d).map((t) => t.value.bankCredit))),
+    );
     setNotes(e?.value.notes ?? "");
+    setTips(e?.value.tips === undefined ? "" : I(e.value.tips));
+    setDeposit(
+      I(
+        e?.value.deposit ??
+          sum(...revenueTransactions(all, d).map((t) => t.value.bankDeposit)),
+      ),
+    );
+    setConfirmed(false);
+    setResolution(
+      e?.value.revenueLink?.resolution ?? settings(all).overlaps[d] ?? "ledger",
+    );
   }
   let total = 0,
     commission = 0,
@@ -56,7 +87,10 @@ export function Daily({ db, all, run, notify, busy }: Common) {
     commission = dayCommission({
       sales,
       rates: Object.fromEntries(
-        staff.map((s) => [s.id, saved?.value.rates[s.id] ?? s.value.rate]),
+        staff.map((s) => [
+          s.id,
+          saved?.value.rates[s.id] ?? rateForDate(s.value, date),
+        ]),
       ),
     } as Day);
     cash = sum(total, -P(card || "0"));
@@ -71,6 +105,18 @@ export function Daily({ db, all, run, notify, busy }: Common) {
             e.preventDefault();
             void run(async () => {
               if (!valid) throw Error("Check the sales amounts");
+              if (needsConfirmation && !confirmed)
+                throw Error(
+                  "Confirm how this breakdown relates to the recorded income before saving.",
+                );
+              if (
+                saved?.value.revenueLink &&
+                !sources.length &&
+                resolution !== "both"
+              )
+                throw Error(
+                  "Linked income is no longer on this date. Confirm that this is a separate sale, or correct the source date first.",
+                );
               const sales = Object.fromEntries(
                 staff.map((s) => [s.id, P(draft[s.id] || "0")]),
               );
@@ -80,13 +126,26 @@ export function Daily({ db, all, run, notify, busy }: Common) {
                 rates: Object.fromEntries(
                   staff.map((s) => [
                     s.id,
-                    saved?.value.rates[s.id] ?? s.value.rate,
+                    saved?.value.rates[s.id] ?? rateForDate(s.value, date),
                   ]),
                 ),
                 product: P(draft.product || "0"),
                 total,
                 card: P(card || "0"),
-                deposit: saved?.value.deposit ?? 0,
+                deposit: P(deposit || "0"),
+                ...(tips !== "" ? { tips: P(tips) } : {}),
+                ...(sources.length
+                  ? {
+                      revenueLink: {
+                        sources: sources.map((t) => ({
+                          id: t.id,
+                          revision: t.revision,
+                        })),
+                        resolution,
+                        recordedTotal: recorded,
+                      },
+                    }
+                  : {}),
                 notes,
                 ...(saved?.value.raw ? { raw: saved.value.raw } : {}),
               };
@@ -107,11 +166,75 @@ export function Daily({ db, all, run, notify, busy }: Common) {
               value={date}
               required
               onChange={(e) => {
-                if (editing) setDate(e.target.value);
-                else load(e.target.value);
+                if (editing) {
+                  setDate(e.target.value);
+                  setConfirmed(false);
+                } else load(e.target.value);
               }}
             />
           </Field>
+          {needsConfirmation && (
+            <section
+              className="income-link"
+              aria-label="Recorded income for this date"
+            >
+              <h3>Recorded income for {date}</h3>
+              <p>
+                Existing revenue:{" "}
+                <strong className="income">{M(recorded)}</strong> ·{" "}
+                {sources.length} source transaction(s)
+              </p>
+              <details>
+                <summary>View matching revenue records</summary>
+                {sources.map((t) => (
+                  <p key={t.id}>
+                    {t.value.date} · {t.value.payee} · {M(t.value.income)}
+                    <small className="muted"> · ID {t.id}</small>
+                  </p>
+                ))}
+              </details>
+              <p>
+                Entered barber and product breakdown: {M(total)} · Difference:{" "}
+                <strong className={total === recorded ? "income" : "expense"}>
+                  {M(sum(total, -recorded))}
+                </strong>
+              </p>
+              {total !== recorded && (
+                <p>
+                  The breakdown does not match recorded income. Saving a linked
+                  breakdown keeps original transaction amounts unchanged.
+                </p>
+              )}
+              <Field label="How this sale relates to recorded income">
+                <select
+                  value={resolution}
+                  onChange={(e) => {
+                    setResolution(e.target.value as typeof resolution);
+                    setConfirmed(false);
+                  }}
+                >
+                  <option value="ledger">
+                    Breakdown of existing revenue · count recorded income once
+                  </option>
+                  <option value="daily">
+                    Use this corrected daily total in summaries · keep source
+                    amounts
+                  </option>
+                  <option value="both">
+                    Separate additional sale · add this daily total
+                  </option>
+                </select>
+              </Field>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                />
+                I confirm this revenue link and any difference shown above
+              </label>
+            </section>
+          )}
           <Table heads={["Stylist / item", "Service revenue", "Commission"]}>
             {staff.map((s) => (
               <tr key={s.id}>
@@ -138,7 +261,9 @@ export function Daily({ db, all, run, notify, busy }: Common) {
                         {
                           sales: { [s.id]: valid ? P(draft[s.id] || "0") : 0 },
                           rates: {
-                            [s.id]: saved?.value.rates[s.id] ?? s.value.rate,
+                            [s.id]:
+                              saved?.value.rates[s.id] ??
+                              rateForDate(s.value, date),
                           },
                         } as Day,
                       ],
@@ -202,6 +327,36 @@ export function Daily({ db, all, run, notify, busy }: Common) {
                 with the displayed row total.
               </p>
             )}
+          <p className="muted small">
+            Cash is the original calculation: daily revenue minus card receipts.
+            A receipt difference is not automatically tips or additional
+            revenue.
+          </p>
+          <details>
+            <summary>Deposits and explicitly recorded tips</summary>
+            <Field label="Recorded sales deposit">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={deposit}
+                onChange={(e) => setDeposit(e.target.value)}
+              />
+            </Field>
+            <Field label="Explicitly recorded tips (optional)">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={tips}
+                onChange={(e) => setTips(e.target.value)}
+              />
+            </Field>
+            <p className="small muted">
+              Only enter a tip amount you know. Tips are separate from salon
+              revenue and barber service commission.
+            </p>
+          </details>
           <Field label="Notes">
             <textarea
               value={notes}
@@ -209,7 +364,10 @@ export function Daily({ db, all, run, notify, busy }: Common) {
             />
           </Field>
           <div className="actions">
-            <button className="primary" disabled={busy || !valid}>
+            <button
+              className="primary"
+              disabled={busy || !valid || (needsConfirmation && !confirmed)}
+            >
               {saved ? "Save changes" : "Save day"}
             </button>
             {editing && (

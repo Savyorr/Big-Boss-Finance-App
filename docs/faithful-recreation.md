@@ -1,3 +1,5 @@
+> Historical v1.0 implementation record. The dashboard, themes, source linking and backup format are extended by [v1.1](comprehensive-update.md).
+
 # Faithful recreation — implementation and acceptance
 
 ## Branch and source of truth

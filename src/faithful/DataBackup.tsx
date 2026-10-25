@@ -50,7 +50,7 @@ export function DataPage({ db, all, run, notify, busy }: Common) {
           </Field>
           {plan && (
             <div className="import-preview">
-              <h3>Import preview</h3>
+              <h3>Review Changes</h3>
               <p>
                 {filename} · {format}
               </p>
@@ -305,11 +305,11 @@ export function DataPage({ db, all, run, notify, busy }: Common) {
                 onClick={() =>
                   void run(async () => {
                     download(await exported(db), "BigBoss_Export");
-                    notify("Export JSON downloaded");
+                    notify("Full backup downloaded. Store it somewhere safe.");
                   })
                 }
               >
-                Export JSON
+                Export Full Backup
               </button>
               <button
                 disabled={busy}

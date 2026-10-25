@@ -1,3 +1,4 @@
+import { unpackBackup } from "./backup";
 import {
   parseJson,
   moneyAt,
@@ -31,7 +32,7 @@ export async function readImport(
   const parsed = parseJson(text),
     j = parsed.value;
   if (j.app === "Big Boss Finance Faithful") {
-    const envelope = envelopeSchema.parse(j);
+    const envelope = unpackBackup(j);
     validateRecords(envelope.records);
     return { envelope, format: "Business JSON / backup" };
   }
@@ -141,6 +142,7 @@ export async function readImport(
         card: m(x, "card", path),
         deposit: m(x, "deposit", path),
         notes: str(x.notes),
+        ...(x.tips !== undefined ? { tips: m(x, "tips", path) } : {}),
         raw: x,
       };
       all.push(await initial("day", "day:" + x.date, value));

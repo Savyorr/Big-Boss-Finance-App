@@ -14,7 +14,7 @@ Switch Business returns to the chooser; opening a business returns to its dashbo
 
 Open Big Boss, then Data & Backup → Import JSON. Select `Big_Boss_Finance_Backup_2026-10-23.json`, inspect the preview and click Confirm Import. All 968 original transactions are retained, including zeros. The four barbers restore at 50%; Sale Product is not staff. Open the five recorded totals disclosure to compare the file.
 
-The dashboard automatically shows the previous completed calendar month. Reports lets you select another month. Historical income/expense fields count without setting up accounts. Profit is revenue less recorded expenses; Contract Labour is not deducted again as earned commission.
+The dashboard opens on the previous completed calendar month. Previous Month, Next Month and the month selector update all four sections together. The daily graph distinguishes gaps from confirmed zero days; choose a day for exact CAD values. Swipe charts horizontally on small screens or open their data tables. Reports lets you select another month. Historical income/expense fields count without setting up accounts. Profit is revenue less recorded expenses; Contract Labour is not deducted again as earned commission.
 
 The historical JSON does not contain individual daily barber sales or original opening balances. Those remain unavailable rather than being guessed. Historical Contract Labour expenses appear in the appropriate barber payment history. They are recorded payments under the original app's rule, not proof of a complete settlement.
 
@@ -26,7 +26,7 @@ Daily Sales: choose the date, enter each barber's service revenue and Sale Produ
 
 Choose a saved date or Edit beside a recent day to correct it. Saving recalculates its total from the rows. Existing sales deposits and historical commission rates stay with that day. Editing the date will not overwrite another saved day. Deleting a day asks for confirmation and retains its deletion for file exchange.
 
-If a saved daily total and imported transaction income occupy the same date, Reports asks which source represents the sale. Until resolved, only the recorded transaction income counts on that date. Choose both only when they are genuinely separate sales.
+For an imported revenue date, Daily Sales shows the existing income and receipts, your entered breakdown, and any difference. Confirm the relationship before saving. The default links the breakdown to the existing sale: original source amounts remain unchanged, and neither revenue nor bank receipts count twice. Choose a corrected daily summary only deliberately; choose both only for genuinely separate sales. Changed source records require review. Tips are optional explicitly recorded information; card excess is never automatically treated as tips or revenue.
 
 ## Expenses and bank
 
@@ -42,13 +42,13 @@ Summary shows service revenue, earned commission, Contract Labour paid, adjustme
 
 Service earning periods are the 1st–15th and 16th–end. Payment and adjustment dates through the 22nd belong to the first period, matching the original. The Through date includes payments and adjustments whose associated period end has been reached. Use latest payment period follows the original shortcut.
 
-Add stylist payment creates a Contract Labour expense. Payments lets you edit earlier entries. Adjustments supports positive settled amounts and negative corrections. By pay period → View periods and corrections provides Fix with adjustment when earnings are known. Barbers lets you add, rename, set a rate or deactivate a barber without removing history. Rate changes do not rewrite already saved days.
+Add stylist payment creates a Contract Labour expense. Payments lets you edit earlier entries. Adjustments supports positive settled amounts and negative corrections. By pay period → View periods and corrections provides Fix with adjustment when earnings are known. Barbers lets you add, rename, set a rate or deactivate a barber without removing history. Rate changes have an effective date and retain their history. New historical entries use the rate effective on that date; already saved days retain their frozen rates.
 
 ## Share JSON with another owner
 
-Export JSON downloads the whole selected business. Send the file yourself. The other owner creates an empty profile and imports it on first use. After both owners edit their copies, exchange exports and confirm merges. New IDs are combined; repeated files do not duplicate records. Independent edits to one record are shown side by side; choose the intended version. No timestamp decides for you. Deleted records stay deleted when older files arrive.
+Export Full Backup downloads the whole selected business. Send the file yourself. The other owner creates an empty profile and imports it on first use. After both owners edit their copies, exchange exports and confirm merges. New IDs are combined; repeated files do not duplicate records. Independent edits to one record are shown side by side; choose the intended version. No timestamp decides for you. Deleted records stay deleted when older files arrive.
 
-Files identifying another business are blocked in an existing nonempty profile. Create a separate empty profile to restore them. Download Backup is the same complete format as Export JSON. Recovery backups are created locally before imports/replacement; download them or Preview restore when needed. Replacement requires typing REPLACE and is intended for a complete backup.
+Files identifying another business are blocked in an existing nonempty profile. Create a separate empty profile to restore them. Download Backup is the same complete format as Export Full Backup. The v2 file includes all staff (including inactive staff), rate history, days, explicit tips/deposits/source links, transactions, adjustments, settings/balances/theme, raw source documents, synchronization identities/revisions/deletions, and recovery history. Recovery snapshots share repeated content inside the file to save space; no financial history is discarded. Prior v1 faithful backups and both original formats still import. Downloads above the supported 25 MB limit fail visibly rather than truncate. Recovery backups are created locally before imports/replacement; download them or Preview restore when needed. Replacement requires typing REPLACE and is intended for a complete backup.
 
 ## Existing previous-version data
 

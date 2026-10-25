@@ -178,8 +178,8 @@ export function Ledger(c: Common) {
               </td>
               <td>{e.value.payee}</td>
               <td>{e.value.details}</td>
-              <td>{M(e.value.income)}</td>
-              <td>{M(e.value.expense)}</td>
+              <td className="income">{M(e.value.income)}</td>
+              <td className="expense">{M(e.value.expense)}</td>
               <td>{M(sum(e.value.bankCredit, e.value.bankDeposit))}</td>
               <td>{M(e.value.bankDebit)}</td>
               <td>
