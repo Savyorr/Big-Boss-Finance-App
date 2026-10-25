@@ -159,7 +159,14 @@ export function DataTable({
   description?: string;
 }) {
   return (
-    <div className="table-scroll">
+    <div
+      className="table-scroll"
+      tabIndex={0}
+      role="region"
+      aria-label={
+        title ? `${title} table` : `${columns[0] ?? "Financial"} table`
+      }
+    >
       <table>
         <thead>
           <tr>

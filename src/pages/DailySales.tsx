@@ -1,3 +1,4 @@
+import { recordedDailyHistory } from "../calculations/recorded-history";
 import { useState, type FormEvent } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { useApp } from "../app/context";
@@ -153,7 +154,8 @@ function SalesEntry({
           cashCents: parseMoney(cash),
           cashVerified: verified,
           cashAccountId: cashAccount,
-          cardAccountId: cardAccount,
+          cardAccountId:
+            cardAccount || (cardCents === 0 ? cashAccount : cardAccount),
           notes,
           stylistAllocations: stylists
             .filter((s) => s.id in allocations)
@@ -289,7 +291,7 @@ function SalesEntry({
           </Field>
           <Field label="Card receipt account">
             <select
-              required
+              required={cardCents > 0}
               value={cardAccount}
               onChange={(e) => setCardAccount(e.target.value)}
             >
@@ -368,6 +370,7 @@ export function DailySalesPage() {
   const [editing, setEditing] = useState<DailySale | "new" | null>(null);
   const [deleting, setDeleting] = useState<DailySale | null>(null);
   const [page, setPage] = useState(0);
+  const [historicalPage, setHistoricalPage] = useState(0);
   const [query, setQuery] = useState("");
   if (!data) return <LoadingState />;
   const rows = scoped(data.dailySales, scope)
@@ -381,6 +384,11 @@ export function DailySalesPage() {
           .includes(query.toLowerCase()),
     )
     .sort((a, b) => b.businessDate.localeCompare(a.businessDate));
+  const historical = recordedDailyHistory(data, scope, range.from, range.to);
+  const historicalIndex = Math.max(
+    0,
+    Math.min(historicalPage, Math.ceil(historical.length / 25) - 1),
+  );
   const pageCount = Math.max(1, Math.ceil(rows.length / 50));
   const currentPage = Math.min(page, pageCount - 1);
   return (
@@ -407,6 +415,58 @@ export function DailySalesPage() {
         />
       )}
       <DateRangeControls range={range} onChange={setRange} />
+      {historical.length > 0 && (
+        <details open={!rows.length}>
+          <summary>Recorded historical daily totals</summary>
+          <p>
+            Daily totals are available from the original financial fields.
+            Per-barber sales, the service/product split and card/cash receipt
+            allocations were not supplied; historical commissions cannot be
+            reconstructed from these totals.
+          </p>
+          <DataTable
+            columns={[
+              "Date",
+              "Recorded Revenue",
+              "Recorded Expenses",
+              "Bank credits",
+              "Bank deposits",
+              "Bank withdrawals",
+            ]}
+            empty={false}
+          >
+            {historical
+              .slice(historicalIndex * 25, (historicalIndex + 1) * 25)
+              .map((day) => (
+                <tr key={day.date}>
+                  <td>{day.date}</td>
+                  <td>{formatMoney(day.income)}</td>
+                  <td>{formatMoney(day.expense)}</td>
+                  <td>{formatMoney(day.bankCredit)}</td>
+                  <td>{formatMoney(day.bankDeposit)}</td>
+                  <td>{formatMoney(day.bankDebit)}</td>
+                </tr>
+              ))}
+          </DataTable>
+          <div className="table-footer">
+            <Button
+              variant="outline"
+              disabled={historicalIndex === 0}
+              onClick={() => setHistoricalPage(historicalIndex - 1)}
+            >
+              Previous historical days
+            </Button>
+            <span>Page {historicalIndex + 1}</span>
+            <Button
+              variant="outline"
+              disabled={(historicalIndex + 1) * 25 >= historical.length}
+              onClick={() => setHistoricalPage(historicalIndex + 1)}
+            >
+              Next historical days
+            </Button>
+          </div>
+        </details>
+      )}
       <Panel
         title="Daily sales history"
         subtitle="One active record per shop and date. Editing updates the linked posting."

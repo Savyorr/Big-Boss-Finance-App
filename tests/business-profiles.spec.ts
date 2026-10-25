@@ -72,20 +72,20 @@ test("separate business databases, simple import preview, clear source totals an
   });
   await expect(history).toContainText("1 imported transactions");
   await expect(
-    history.locator(".metric-card").filter({ hasText: "Imported income" }),
+    history.locator(".metric-card").filter({ hasText: "Recorded Revenue" }),
   ).toContainText("$50.00");
   await expect(
-    history.locator(".metric-card").filter({ hasText: "Imported expenses" }),
+    history.locator(".metric-card").filter({ hasText: "Recorded Expenses" }),
   ).toContainText("$10.00");
   await expect(
     history
       .locator(".metric-card")
-      .filter({ hasText: "Imported bank withdrawals" }),
+      .filter({ hasText: "Recorded bank withdrawals" }),
   ).toContainText("$999.00");
   await page.goto("/#/stylists");
   await expect(
     page.getByRole("heading", {
-      name: "Your original JSON contains transactions, not barbers",
+      name: "Build your team",
     }),
   ).toBeVisible();
   const accessibility = await new AxeBuilder({ page })
@@ -93,12 +93,9 @@ test("separate business databases, simple import preview, clear source totals an
     .analyze();
   expect(accessibility.violations.map((v) => v.id)).toEqual([]);
   await page.goto("/#/data");
-  await page
-    .getByRole("button", { name: "Export business JSON", exact: true })
-    .click();
   const download = page.waitForEvent("download");
   await page
-    .getByRole("button", { name: "Download JSON", exact: true })
+    .getByRole("button", { name: "Export business JSON", exact: true })
     .click();
   const data = JSON.parse(
     await (

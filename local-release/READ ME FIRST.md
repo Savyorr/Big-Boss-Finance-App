@@ -24,7 +24,7 @@ Records live in this browser profile at http://127.0.0.1:47831. Keep the same de
 
 Existing development data at ports 5173/4173 uses separate storage. Export a full JSON backup from the old app, then import it here and check the restored totals. Preserve old storage until verified. For an update: download a backup, close the helper, extract the newer release and use its launcher with the same browser/profile/address.
 
-Legacy imports remain **Needs review**. Bank debits are not assumed to be expenses. Historical classification, account balances and commission allocations need owner/accountant review before historical profit or reconciliation can be relied upon. Never guess to make totals agree.
+Original history appears as provisional recorded figures. Bank debits are not assumed to be expenses. Accounting classification and balances still need supporting evidence before final statements or reconciliation can be relied upon.
 
 ## Troubleshooting
 
@@ -45,4 +45,14 @@ Offline use: let the application finish loading once with the local helper avail
 
 The opening chooser automatically shows your existing business. Open it to keep using the records already imported; do not clear data or start over. Before installing an update, download a backup and close the old helper. Launch the new version using the same browser/profile and address. Accept the app update banner and reload if offered.
 
-Selecting a JSON file now prepares its preview automatically. Confirm it after reviewing the destination and changes. The dashboard shows original imported income/expenses/withdrawals under Your imported financial history; those amounts remain separate from newly posted entries. The original transaction-only JSON does not contain your barbers. Add them under Stylists & Commissions, or import a full backup from the old app that includes staff. The existing financial import does not need to be repeated.
+Open your existing Big Boss profile and click **Complete Legacy Migration**. Your saved transactions stay in place. The app restores Steven Hirmiz, Waseem Saleem, Aeden Kajo and Mattew Burns from the original application's configuration and links their historical records. You do not need to create these barbers manually or repeat the financial import.
+
+For a first import, select the original JSON. Leave **Restore the original four barbers** checked, review the destination and confirm. The original service commission default is 50%; product sales earn no barber commission. Existing agreed rates are preserved.
+
+The dashboard and Reports open with **Recorded Revenue**, **Recorded Expenses** and recorded bank movements. These are provisional original figures, with new posted entries included once. Use **Verified accounting entries** for classified bookkeeping. Bank withdrawals are not an expense total. The app does not guess bank balances.
+
+Click **History** beside a barber to see linked historical expenses, bank movements and supported payment evidence. A payment amount and an amount owed are not the same. Some records need settlement review. Historical sales per barber and starting commission balances were not in the supplied transaction file, so the app cannot reconstruct their historical earned/outstanding commission. A full backup from the original browser's daily journal is needed for that.
+
+For new days, enter service revenue beside each barber, product sales and card receipts. Cash and 50% commissions calculate automatically; products have no barber commission. Choose actual receipt accounts. If there are no card receipts, only the cash account is required. Save once and edit that day if you need to correct it.
+
+Use **Export business JSON** for a one-click download of this business. Save it somewhere safe after each day's work. Profiles and backups stay separate between businesses.

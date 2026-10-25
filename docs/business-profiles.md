@@ -1,5 +1,7 @@
 # Separate business profiles and imported history
 
+The profile isolation described here remains current. The earlier v0.5 conclusion that barbers must be entered manually is superseded by [the v0.6 migration correction](legacy-migration.md): the original HTML supplies an authorized four-person roster and 50% rate. Recorded history is now the default financial view.
+
 This update follows the owner's correction: separate businesses should start in separate profiles, like separate local accounts. The default entry screen is now Choose your business. Create business profile creates an independent IndexedDB database, a business record and its initial scope. It does not add another shop to a shared global workspace. Duplicate profile names are rejected to avoid accidentally starting over in a second empty business. Restoring a full backup preserves the destination profile nickname so two restored copies remain distinguishable in the chooser. Switch profile returns to the chooser. Database selection is fixed when the document loads; a full page reload when switching prevents an in-flight operation from being retargeted to another business.
 
 Each new profile has separate barbers/stylists, accounts, sales, transactions, preferences, import history, source documents, revisions and backups. Exports/backups contain the current database only. There is no cross-profile All Locations view. Profiles are local workspaces, not online identities, encryption or password protection. Other people using the same browser can open these profiles. Separate Windows/browser accounts are needed for actual access separation.
@@ -20,7 +22,7 @@ Choosing a JSON file automatically prepares a preview using the current business
 
 Download a business backup first. Close the running local helper, extract the updated ZIP and launch it at the same fixed address, in the same browser/profile. If an application update banner appears, finish open forms, accept the update and reload. The chooser will show the existing business; open it. Do not create a fresh profile or re-import merely because the chooser is new. The old database and its internal recovery history remain in place.
 
-The existing transaction import does not need to be repeated. If importing into a new independent profile, choose/create that profile first, select the original JSON, review the automatic preview and confirm. Add the barbers manually with their actual agreed rates, or use a full old-app backup containing staff; the transaction-only original cannot supply those missing profiles.
+The existing transaction import does not need to be repeated. If importing into a new independent profile, choose/create that profile first, select the original JSON, review the automatic preview and confirm. Use Complete Legacy Migration to restore the roster from the supplied original HTML configuration. Historical per-barber daily sales still require a full old-browser journal backup.
 
 ## Verification
 

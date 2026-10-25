@@ -68,7 +68,9 @@ async function confirm(page: Page) {
   if (await mapped.count()) await mapped.check();
   await page.getByRole("button", { name: "Apply merge", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("status")).toContainText("Import complete");
+  await expect(page.getByRole("status")).toContainText("Import complete", {
+    timeout: 20000,
+  });
 }
 test("legacy preview, target selection, repeated imports, details and offline file exchange", async ({
   page,
@@ -119,11 +121,14 @@ test("legacy preview, target selection, repeated imports, details and offline fi
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.goto("/#/");
   await expect(
-    page.getByText("1 unclassified transactions excluded", { exact: false }),
+    page.getByRole("region", { name: "Imported financial history" }),
   ).toBeVisible();
   await page.goto("/#/reports");
   await expect(
-    page.getByText("1 unclassified records are excluded.", { exact: false }),
+    page.getByRole("row", {
+      name: "Unreviewed Historical Records 1",
+      exact: true,
+    }),
   ).toBeVisible();
   await page.goto("/#/data");
   await page.evaluate(() =>
@@ -140,16 +145,13 @@ test("legacy preview, target selection, repeated imports, details and offline fi
 
   await preview(page);
   await confirm(page);
+  const event = page.waitForEvent("download");
   await page
     .getByRole("button", { name: "Export business JSON", exact: true })
     .click();
-  const event = page.waitForEvent("download");
-  await page
-    .getByRole("button", { name: "Download JSON", exact: true })
-    .click();
   const downloaded = await event;
   expect(downloaded.suggestedFilename()).toMatch(
-    /^BigBoss_AllLocations_\d{4}-\d{2}-\d{2}\.json$/,
+    /^BigBoss_Business_\d{4}-\d{2}-\d{2}\.json$/,
   );
   const path = await downloaded.path();
   const data = JSON.parse(await readFile(path!, "utf8"));

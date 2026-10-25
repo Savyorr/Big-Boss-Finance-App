@@ -41,3 +41,6 @@ secrets*
 !/components.json
 *.log
 .DS_Store
+
+# Original reference HTML contains private embedded financial defaults.
+Big Boss Hair Salon*Finance.html

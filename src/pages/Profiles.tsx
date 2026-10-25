@@ -1,3 +1,4 @@
+import { LegacyMigrationCard } from "../components/forms/LegacyMigrationCard";
 import { useFinance } from "../hooks/useFinance";
 import { accountBalance, commissionSummary } from "../calculations/finance";
 import { today } from "../utils/dates";
@@ -29,6 +30,7 @@ export function ProfilesPage({ kind }: { kind: "stylist" | "account" }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [tab, setTab] = useState("Profiles");
+  const [historyStylistId, setHistoryStylist] = useState("");
   const records = useLiveQuery(async () => {
     const table = db.table<Stylist | Account>(
       kind === "stylist" ? "stylists" : "accounts",
@@ -65,25 +67,7 @@ export function ProfilesPage({ kind }: { kind: "stylist" | "account" }) {
           </Button>
         }
       />
-      {isStylist &&
-        records?.length === 0 &&
-        data?.transactions.some(
-          (t) =>
-            !t.deletedAt &&
-            (scope === "all" || t.shopId === scope) &&
-            t.source?.format === "legacy-transactions",
-        ) && (
-          <section className="legacy-overview">
-            <h2>Your original JSON contains transactions, not barbers</h2>
-            <p>
-              Your import succeeded. This file has no staff list, so it cannot
-              restore barber names, commission rates or their sales allocations.
-              Add your barbers using Add stylist, or import a full backup
-              exported from the old application that includes staff. Existing
-              transactions will stay unchanged.
-            </p>
-          </section>
-        )}
+      {isStylist && <LegacyMigrationCard />}
       {data &&
         data.transactions.some(
           (t) =>
@@ -161,7 +145,7 @@ export function ProfilesPage({ kind }: { kind: "stylist" | "account" }) {
                     "Stylist",
                     "Location",
                     "Commission rate today",
-                    "Earned / paid / outstanding",
+                    "New entries: earned / paid / outstanding",
                     "Status",
                     "Actions",
                   ]
@@ -259,7 +243,23 @@ export function ProfilesPage({ kind }: { kind: "stylist" | "account" }) {
                               "0001-01-01",
                               today(),
                             );
-                            return `${formatMoney(c.earnedCents)} / ${formatMoney(c.paidCents)} / ${formatMoney(c.outstandingCents)}`;
+                            const historical = data.transactions.some(
+                              (t) =>
+                                !t.deletedAt &&
+                                t.stylistId === record.id &&
+                                t.legacyFields,
+                            );
+                            return (
+                              <>
+                                {`${formatMoney(c.earnedCents)} / ${formatMoney(c.paidCents)} / ${formatMoney(c.outstandingCents)}`}
+                                {historical && (
+                                  <small className="cell-note">
+                                    Historical opening balance unavailable · see
+                                    Payment history
+                                  </small>
+                                )}
+                              </>
+                            );
                           })()
                         : "Loading…"}
                     </td>
@@ -297,6 +297,19 @@ export function ProfilesPage({ kind }: { kind: "stylist" | "account" }) {
                   </span>
                 </td>
                 <td>
+                  {isStylist && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={`History ${record.name}`}
+                      onClick={() => {
+                        setHistoryStylist(record.id);
+                        setTab("Payment history");
+                      }}
+                    >
+                      History
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -315,7 +328,11 @@ export function ProfilesPage({ kind }: { kind: "stylist" | "account" }) {
           </DataTable>
         </Panel>
       ) : isStylist ? (
-        <CommissionWorkspace tab={tab} />
+        <CommissionWorkspace
+          key={historyStylistId}
+          tab={tab}
+          initialStylistId={historyStylistId}
+        />
       ) : (
         <BankingWorkspace tab={tab} />
       )}

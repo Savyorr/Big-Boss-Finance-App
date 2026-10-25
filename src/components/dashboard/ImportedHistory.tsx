@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useFinance } from "../../hooks/useFinance";
 import { useApp } from "../../app/context";
+import { recordedHistory } from "../../calculations/recorded-history";
 import { importedHistory } from "../../calculations/imported-history";
 import { formatMoney } from "../../calculations/money";
 import { MetricCard } from "./MetricCard";
@@ -9,8 +10,8 @@ export function ImportedHistory({ from, to }: { from: string; to: string }) {
   const data = useFinance();
   const { scope } = useApp();
   if (!data) return null;
-  const totals = importedHistory(data, scope, from, to);
-  if (!totals.count) {
+  const totals = recordedHistory(data, scope, from, to);
+  if (!totals.sourceCount) {
     const all = importedHistory(data, scope, "0000-01-01", "9999-12-31");
     return all.count ? (
       <section
@@ -32,38 +33,37 @@ export function ImportedHistory({ from, to }: { from: string; to: string }) {
       className="legacy-overview"
       aria-label="Imported financial history"
     >
-      <h2>Your imported financial history</h2>
+      <h2>Recorded financial history</h2>
       <p>
-        <strong>{totals.count} imported transactions</strong> in this date
-        range. These are the amounts recorded in your original file. Your import
-        worked; the figures below are preserved separately from newly posted
-        entries.
+        <strong>{totals.sourceCount} imported transactions</strong> ·{" "}
+        {totals.newCount} new posted entries. Provisional recorded figures, not
+        final accounting statements.
       </p>
       <div className="metrics-grid">
         <MetricCard
-          label="Imported income"
+          label="Recorded Revenue"
           icon={ArrowUpRight}
-          amountCents={totals.income}
-          description="Income recorded in the original file"
+          amountCents={totals.revenueCents}
+          description="Original recorded income + new posted revenue"
         />
         <MetricCard
-          label="Imported expenses"
+          label="Recorded Expenses"
           icon={ArrowDownLeft}
-          amountCents={totals.expense}
-          description="Expense field recorded in the original file"
+          amountCents={totals.expenseCents}
+          description="Original recorded expenses + new posted costs"
         />
         <MetricCard
-          label="Imported bank withdrawals"
+          label="Recorded bank withdrawals"
           icon={Landmark}
-          amountCents={totals.bankDebit}
+          amountCents={totals.bankDebitCents}
           description="Money withdrawn; not an expense total"
         />
       </div>
       <details>
         <summary>Other amounts preserved in your backup</summary>
         <p>
-          Bank credits: {formatMoney(totals.bankCredit)} · Bank deposits:{" "}
-          {formatMoney(totals.bankDeposit)}
+          Bank credits: {formatMoney(totals.bankCreditCents)} · Bank deposits:{" "}
+          {formatMoney(totals.bankDepositCents)}
         </p>
         <p>
           Credits and deposits may be receipts of the same sales. They are not
@@ -71,10 +71,10 @@ export function ImportedHistory({ from, to }: { from: string; to: string }) {
         </p>
       </details>
       <p>
-        Account assignments and historical commission details still need review.
-        These totals do not establish verified profit or current bank balances.
-        Classified entries leave this section and appear in the posted figures
-        below, so they are not counted twice.
+        {totals.unreviewed} Unreviewed Historical Records. Bank withdrawals are
+        not expenses. Daily barber sales, opening commission liabilities and
+        account assignments are incomplete; the recorded difference is not
+        verified profit or a reconciled balance.
       </p>
       <Link to="/transactions">View imported transactions</Link>
     </section>

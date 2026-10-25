@@ -127,12 +127,9 @@ test("packaged production server, browser restart persistence, offline lazy rout
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     }
     await page.goto(origin + "/#/data");
-    await page
-      .getByRole("button", { name: "Export business JSON", exact: true })
-      .click();
     const event = page.waitForEvent("download");
     await page
-      .getByRole("button", { name: "Download JSON", exact: true })
+      .getByRole("button", { name: "Export business JSON", exact: true })
       .click();
     const backup = JSON.parse(
       await readFile((await (await event).path())!, "utf8"),

@@ -1,3 +1,5 @@
+import { HistoricalBarberRecords } from "../components/forms/HistoricalBarberRecords";
+import { recordedHistory } from "../calculations/recorded-history";
 import { ImportedHistory } from "../components/dashboard/ImportedHistory";
 import { reportingRangeIssue } from "../utils/dates";
 import { dateOnly } from "../models";
@@ -42,7 +44,7 @@ const reports = [
 export function ReportsPage() {
   const { scope, shops, locationName } = useApp();
   const data = useFinance();
-  const [report, setReport] = useState(reports[0]);
+  const [requestedReport, setReport] = useState<string | null>(null);
   const [range, setRange] = useDateRange();
   if (!data) return <LoadingState />;
   const rangeIssue = reportingRangeIssue(range.from, range.to);
@@ -61,6 +63,9 @@ export function ReportsPage() {
       </>
     );
   const summary = summarize(data, scope, range.from, range.to);
+  const recorded = recordedHistory(data, scope, range.from, range.to);
+  const report =
+    requestedReport ?? (recorded.sourceCount ? "Recorded history" : reports[0]);
   const monthly = monthlySeries(data, scope, range.from, range.to);
   const tx = scoped(data.transactions, scope).filter(
     (t) =>
@@ -97,17 +102,24 @@ export function ReportsPage() {
           From must be on or before To.
         </p>
       )}
-      <ImportedHistory from={range.from} to={range.to} />
+      {report === "Recorded history" && (
+        <ImportedHistory from={range.from} to={range.to} />
+      )}
       <div className="report-workspace">
         <nav aria-label="Report types" className="report-nav">
-          {reports.map((r) => (
+          {(recorded.sourceCount
+            ? ["Recorded history", ...reports]
+            : reports
+          ).map((r) => (
             <button
               className={report === r ? "active" : ""}
               key={r}
               onClick={() => setReport(r)}
             >
               <FileChartColumn size={16} />
-              {r}
+              {r === "Profit & Loss" && recorded.sourceCount
+                ? "Verified Profit & Loss"
+                : r}
             </button>
           ))}
         </nav>
@@ -121,8 +133,57 @@ export function ReportsPage() {
             <p className="muted small">
               {locationName} · {range.from} through {range.to}
             </p>
-            <p className="notice report-basis">{accountingBasis}</p>
-            {summary.reviewCount > 0 && (
+            {report === "Recorded history" ? (
+              <>
+                <p className="notice">
+                  Provisional source history plus new posted entries. Source
+                  expenses may include commission payments, financing or
+                  distributions. This is not a final Profit & Loss statement.
+                </p>
+                <DataTable
+                  columns={["Recorded measure", "CAD / count"]}
+                  empty={false}
+                >
+                  <tr>
+                    <td>Recorded Revenue</td>
+                    <td>{formatMoney(recorded.revenueCents)}</td>
+                  </tr>
+                  <tr>
+                    <td>Recorded Expenses</td>
+                    <td>{formatMoney(recorded.expenseCents)}</td>
+                  </tr>
+                  <tr>
+                    <td>Recorded difference · not verified profit</td>
+                    <td>{formatMoney(recorded.differenceCents)}</td>
+                  </tr>
+                  <tr>
+                    <td>Bank credits recorded</td>
+                    <td>{formatMoney(recorded.bankCreditCents)}</td>
+                  </tr>
+                  <tr>
+                    <td>Bank deposits recorded</td>
+                    <td>{formatMoney(recorded.bankDepositCents)}</td>
+                  </tr>
+                  <tr>
+                    <td>Bank withdrawals recorded · not expenses</td>
+                    <td>{formatMoney(recorded.bankDebitCents)}</td>
+                  </tr>
+                  <tr>
+                    <td>Unreviewed Historical Records</td>
+                    <td>{recorded.unreviewed}</td>
+                  </tr>
+                  <tr>
+                    <td>Classified historical records · counted once</td>
+                    <td>{recorded.classifiedHistorical}</td>
+                  </tr>
+                </DataTable>
+              </>
+            ) : (
+              <p className="notice report-basis">
+                Verified/classified entries only. {accountingBasis}
+              </p>
+            )}
+            {report !== "Recorded history" && summary.reviewCount > 0 && (
               <p className="error-message">
                 {summary.reviewCount} unclassified records are excluded. This
                 report needs classification review.
@@ -286,6 +347,9 @@ export function ReportsPage() {
                   );
                 })}
               </DataTable>
+            )}
+            {report === "Commission Summary" && recorded.sourceCount > 0 && (
+              <HistoricalBarberRecords from={range.from} to={range.to} />
             )}
             {report === "Banking Summary" && (
               <>

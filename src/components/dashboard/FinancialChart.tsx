@@ -13,9 +13,11 @@ import { formatMoney } from "../../calculations/money";
 export default function FinancialChart({
   data,
   mode = "revenue",
+  provisional = false,
 }: {
   data: ChartPoint[];
   mode?: "revenue" | "profit" | "cash";
+  provisional?: boolean;
 }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
@@ -37,6 +39,17 @@ export default function FinancialChart({
         <Area
           type="monotone"
           dataKey={mode === "revenue" ? "revenue" : mode}
+          name={
+            mode === "revenue"
+              ? provisional
+                ? "Recorded Revenue"
+                : "Revenue"
+              : mode === "profit"
+                ? provisional
+                  ? "Recorded difference"
+                  : "Operating profit"
+                : "Cash movement"
+          }
           stroke="var(--primary)"
           fill="var(--primary-soft)"
         />
@@ -44,6 +57,7 @@ export default function FinancialChart({
           <Area
             type="monotone"
             dataKey="expenses"
+            name={provisional ? "Recorded Expenses" : "Expenses"}
             stroke="var(--muted)"
             fill="transparent"
           />

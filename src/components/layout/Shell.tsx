@@ -220,7 +220,7 @@ export function Shell() {
             <span className="status-dot" /> Local database connected
           </span>
           <span>
-            Big Boss Finance <span className="version">v0.5</span>
+            Big Boss Finance <span className="version">v0.6</span>
           </span>
           <span>CAD · Canadian Dollar</span>
         </footer>

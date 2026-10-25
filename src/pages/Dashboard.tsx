@@ -1,3 +1,8 @@
+import {
+  recordedHistory,
+  recordedMonthlySeries,
+} from "../calculations/recorded-history";
+import { LegacyMigrationCard } from "../components/forms/LegacyMigrationCard";
 import { ImportedHistory } from "../components/dashboard/ImportedHistory";
 import { reportingRangeIssue } from "../utils/dates";
 import { useState } from "react";
@@ -42,12 +47,21 @@ export function DashboardPage() {
   const { locationName, shops, scope } = useApp();
   const data = useFinance();
   const [range, setRange] = useDateRange();
+  const [showVerified, setShowVerified] = useState(false);
   const [chart, setChart] = useState("Revenue vs expenses");
   if (!data) return <LoadingState />;
   const rangeIssue = reportingRangeIssue(range.from, range.to);
   const valid = !rangeIssue;
   const summary = summarize(data, scope, range.from, range.to);
-  const series = valid ? monthlySeries(data, scope, range.from, range.to) : [];
+  const recorded = recordedHistory(data, scope, range.from, range.to);
+  const provisional = recorded.sourceCount > 0 && !showVerified;
+  const plottedChart =
+    provisional && chart === "Cash movement" ? "Revenue vs expenses" : chart;
+  const series = valid
+    ? provisional
+      ? recordedMonthlySeries(data, scope, range.from, range.to)
+      : monthlySeries(data, scope, range.from, range.to)
+    : [];
   const visibleShops = shops.filter((s) => scope === "all" || s.id === scope);
   const recent = scoped(data.transactions, scope)
     .filter(
@@ -109,6 +123,7 @@ export function DashboardPage() {
           </Button>
         }
       />
+      <LegacyMigrationCard showCompleted />
       <DateRangeControls range={range} onChange={setRange} />
       {!valid && (
         <p role="alert" className="error-message">
@@ -128,52 +143,92 @@ export function DashboardPage() {
         </div>
         <span className="badge badge-green">LOCAL-FIRST</span>
       </div>
-      {valid && <ImportedHistory from={range.from} to={range.to} />}
-      {summary.reviewCount > 0 && (
+      {recorded.sourceCount > 0 && (
+        <div
+          className="tabs"
+          role="group"
+          aria-label="Financial reporting basis"
+        >
+          <button
+            aria-pressed={!showVerified}
+            onClick={() => {
+              setShowVerified(false);
+              setChart("Revenue vs expenses");
+            }}
+          >
+            Recorded history · provisional
+          </button>
+          <button
+            aria-pressed={showVerified}
+            onClick={() => setShowVerified(true)}
+          >
+            Verified accounting entries
+          </button>
+        </div>
+      )}
+      {valid && provisional && (
+        <ImportedHistory from={range.from} to={range.to} />
+      )}
+      {!provisional && summary.reviewCount > 0 && (
         <h2 className="posted-figures-heading">
           Posted entries & verified account figures
         </h2>
       )}
-      <div className="metrics-grid">
-        {metrics.map(([label, Icon, description, amount], i) => (
-          <MetricCard
-            key={label}
-            label={label}
-            icon={Icon}
-            description={description}
-            amountCents={amount}
-            tone={i}
-          />
-        ))}
-      </div>
+      {!provisional && (
+        <div className="metrics-grid">
+          {metrics.map(([label, Icon, description, amount], i) => (
+            <MetricCard
+              key={label}
+              label={label}
+              icon={Icon}
+              description={description}
+              amountCents={amount}
+              tone={i}
+            />
+          ))}
+        </div>
+      )}
       <div className="dashboard-chart-row">
         <div>
           <div className="chart-tabs">
-            {["Revenue vs expenses", "Monthly profit", "Cash movement"].map(
-              (t) => (
-                <button
-                  key={t}
-                  className={chart === t ? "active" : ""}
-                  onClick={() => setChart(t)}
-                >
-                  {t}
-                </button>
-              ),
-            )}
+            {[
+              "Revenue vs expenses",
+              "Monthly profit",
+              ...(provisional ? [] : ["Cash movement"]),
+            ].map((t) => (
+              <button
+                key={t}
+                className={plottedChart === t ? "active" : ""}
+                onClick={() => setChart(t)}
+              >
+                {provisional
+                  ? t === "Revenue vs expenses"
+                    ? "Recorded revenue & expenses"
+                    : "Recorded difference"
+                  : t}
+              </button>
+            ))}
           </div>
           <ChartPanel
             title={
-              chart === "Revenue vs expenses" ? "Revenue & expenses" : chart
+              provisional
+                ? plottedChart === "Monthly profit"
+                  ? "Recorded difference · provisional"
+                  : "Recorded revenue & expenses"
+                : plottedChart === "Revenue vs expenses"
+                  ? "Revenue & expenses"
+                  : plottedChart
             }
             subtitle={`${range.from} through ${range.to} · ${locationName}`}
             mode={
-              chart === "Monthly profit"
+              plottedChart === "Monthly profit"
                 ? "profit"
-                : chart === "Cash movement"
+                : plottedChart === "Cash movement"
                   ? "cash"
                   : "revenue"
             }
             data={hasActivity ? series : []}
+            provisional={provisional}
           />
         </div>
         <Panel
@@ -251,71 +306,100 @@ export function DashboardPage() {
               <tr key={t.id}>
                 <td>
                   {t.description}
-                  <small className="cell-note">{t.kind}</small>
+                  <small className="cell-note">
+                    {t.legacyFields
+                      ? "Historical record · provisional"
+                      : t.kind}
+                  </small>
                 </td>
                 <td>{t.businessDate}</td>
-                <td>{formatMoney(t.amountCents)}</td>
+                <td>
+                  {t.legacyFields
+                    ? formatMoney(
+                        t.legacyFields.income ||
+                          t.legacyFields.expense ||
+                          t.legacyFields.bankDebit ||
+                          t.legacyFields.bankCredit ||
+                          t.legacyFields.bankDeposit ||
+                          0,
+                      )
+                    : formatMoney(t.amountCents)}
+                </td>
               </tr>
             ))}
           </DataTable>
         </Panel>
+        {!provisional && (
+          <Panel
+            title="Location performance"
+            subtitle="Independent records. A consistent accounting basis."
+            action={
+              <span className="badge">
+                {visibleShops.filter((s) => s.status === "active").length}{" "}
+                active shops
+              </span>
+            }
+          >
+            <DataTable
+              columns={["Location", "Revenue", "Operating profit"]}
+              empty={!visibleShops.length}
+              title="Your locations belong here"
+              description="Add a shop in Settings to get started."
+            >
+              {visibleShops.map((s) => {
+                const c = summarize(data, s.id, range.from, range.to);
+                return (
+                  <tr key={s.id}>
+                    <td>
+                      <strong>{s.name}</strong>
+                      <small className="cell-note">{s.status}</small>
+                    </td>
+                    <td>{formatMoney(c.revenueCents)}</td>
+                    <td>{formatMoney(c.profitCents)}</td>
+                  </tr>
+                );
+              })}
+            </DataTable>
+          </Panel>
+        )}
+      </div>
+      <div className="two-columns">
+        {!provisional && (
+          <Panel title="Revenue by location">
+            <DataTable
+              columns={["Location", "Revenue"]}
+              empty={!visibleShops.length}
+            >
+              {visibleShops.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name}</td>
+                  <td>
+                    {formatMoney(
+                      summarize(data, s.id, range.from, range.to).revenueCents,
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          </Panel>
+        )}
         <Panel
-          title="Location performance"
-          subtitle="Independent records. A consistent accounting basis."
-          action={
-            <span className="badge">
-              {visibleShops.filter((s) => s.status === "active").length} active
-              shops
-            </span>
+          title={
+            provisional ? "Recorded expense categories" : "Expense categories"
           }
         >
           <DataTable
-            columns={["Location", "Revenue", "Operating profit"]}
-            empty={!visibleShops.length}
-            title="Your locations belong here"
-            description="Add a shop in Settings to get started."
-          >
-            {visibleShops.map((s) => {
-              const c = summarize(data, s.id, range.from, range.to);
-              return (
-                <tr key={s.id}>
-                  <td>
-                    <strong>{s.name}</strong>
-                    <small className="cell-note">{s.status}</small>
-                  </td>
-                  <td>{formatMoney(c.revenueCents)}</td>
-                  <td>{formatMoney(c.profitCents)}</td>
-                </tr>
-              );
-            })}
-          </DataTable>
-        </Panel>
-      </div>
-      <div className="two-columns">
-        <Panel title="Revenue by location">
-          <DataTable
-            columns={["Location", "Revenue"]}
-            empty={!visibleShops.length}
-          >
-            {visibleShops.map((s) => (
-              <tr key={s.id}>
-                <td>{s.name}</td>
-                <td>
-                  {formatMoney(
-                    summarize(data, s.id, range.from, range.to).revenueCents,
-                  )}
-                </td>
-              </tr>
-            ))}
-          </DataTable>
-        </Panel>
-        <Panel title="Expense categories">
-          <DataTable
             columns={["Category", "Expense"]}
-            empty={!summary.expenseCategories.length}
+            empty={
+              !(provisional ? recorded.categories : summary.expenseCategories)
+                .length
+            }
             title="No expenses in this period"
           >
-            {summary.expenseCategories.map(([c, v]) => (
+            {(provisional
+              ? recorded.categories
+              : summary.expenseCategories
+            ).map(([c, v]) => (
               <tr key={c}>
                 <td>{c}</td>
                 <td>{formatMoney(v)}</td>
@@ -324,14 +408,15 @@ export function DashboardPage() {
           </DataTable>
         </Panel>
       </div>
-      {(summary.reviewCount > 0 || summary.receiptWarnings > 0) && (
-        <div className="notice">
-          <CircleAlert size={18} />
-          {summary.reviewCount} unclassified transactions excluded from
-          financial totals · {summary.receiptWarnings} sales receipt warnings.
-          Review the original records before correcting them.
-        </div>
-      )}
+      {!provisional &&
+        (summary.reviewCount > 0 || summary.receiptWarnings > 0) && (
+          <div className="notice">
+            <CircleAlert size={18} />
+            {summary.reviewCount} unclassified transactions excluded from
+            financial totals · {summary.receiptWarnings} sales receipt warnings.
+            Review the original records before correcting them.
+          </div>
+        )}
       {summary.overpaidCents > 0 && (
         <p className="notice">
           Payments or settlement adjustments exceed earned commissions for some

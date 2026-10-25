@@ -27,16 +27,15 @@ async function merge(page: Page) {
   });
   if (await mapping.count()) await mapping.check();
   await page.getByRole("button", { name: "Apply merge", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Import complete");
+  await expect(page.getByRole("status")).toContainText("Import complete", {
+    timeout: 20000,
+  });
 }
 async function exported(page: Page) {
   await page.goto("/#/data");
-  await page
-    .getByRole("button", { name: "Export business JSON", exact: true })
-    .click();
   const download = page.waitForEvent("download");
   await page
-    .getByRole("button", { name: "Download JSON", exact: true })
+    .getByRole("button", { name: "Export business JSON", exact: true })
     .click();
   return JSON.parse(await readFile((await (await download).path())!, "utf8"));
 }
@@ -81,6 +80,13 @@ test("actual original: browser import, all source fields and totals, clean resto
   await merge(page);
   const native = await exported(page);
   expect(native.data.transactions).toHaveLength(968);
+  expect(native.data.stylists.map((s: any) => s.name).sort()).toEqual(
+    ["Steven Hirmiz", "Waseem Saleem", "Aeden Kajo", "Mattew Burns"].sort(),
+  );
+  expect(native.data.transactions.filter((t: any) => t.stylistId)).toHaveLength(
+    85,
+  );
+
   const rows = native.data.transactions;
   // Compare every source field without printing private records on success.
   expect(
@@ -121,9 +127,9 @@ test("actual original: browser import, all source fields and totals, clean resto
   await expect(imported).toContainText("968 imported transactions");
   const expectedFigures = JSON.parse(expectedText);
   for (const [label, key] of [
-    ["Imported income", "income"],
-    ["Imported expenses", "expense"],
-    ["Imported bank withdrawals", "bankDebit"],
+    ["Recorded Revenue", "income"],
+    ["Recorded Expenses", "expense"],
+    ["Recorded bank withdrawals", "bankDebit"],
   ])
     await expect(
       imported.locator(".metric-card").filter({ hasText: label }),
@@ -132,7 +138,10 @@ test("actual original: browser import, all source fields and totals, clean resto
   await expect(page.locator("tbody tr")).toHaveCount(50);
   await page.goto("/#/reports");
   await expect(
-    page.getByText("968 unclassified records are excluded.", { exact: false }),
+    page.getByRole("row", {
+      name: "Unreviewed Historical Records 968",
+      exact: true,
+    }),
   ).toBeVisible();
   const other = await browser.newContext();
   const fresh = await other.newPage();

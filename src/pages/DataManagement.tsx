@@ -1,3 +1,8 @@
+import { LegacyMigrationCard } from "../components/forms/LegacyMigrationCard";
+import {
+  ORIGINAL_BARBERS,
+  ORIGINAL_LEGACY_APP,
+} from "../config/original-business";
 import { Link } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -125,6 +130,8 @@ function readableDifferences(conflict: ImportPlan["conflicts"][number]) {
 }
 export function DataManagementPage() {
   const { shops, scope } = useApp();
+  const [restoreRoster, setRestoreRoster] = useState(true);
+  const [migrationResult, setMigrationResult] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [target, setTarget] = useState(scope === "all" ? "" : scope);
   useEffect(() => {
@@ -179,6 +186,7 @@ export function DataManagementPage() {
     if (!next) return;
     reset();
     setStatus("");
+    setMigrationResult("");
     if (!next.name.toLowerCase().endsWith(".json")) {
       setError("Choose a .json file. Nothing was imported.");
       setFile(null);
@@ -221,7 +229,13 @@ export function DataManagementPage() {
     setBusy("Preparing export…");
     setError("");
     try {
-      setDownload(await exchangeService.exportData(exportScope, type));
+      const content = await exchangeService.exportData(exportScope, type);
+      if (type === "all") {
+        await downloadEnvelope(content, "Business");
+        setStatus(
+          "Business JSON download started. Keep this file as your backup or share it manually.",
+        );
+      } else setDownload(content);
     } catch (e) {
       setError(messageOf(e));
     } finally {
@@ -230,7 +244,7 @@ export function DataManagementPage() {
   }
   async function confirmImport() {
     if (!plan) return;
-    setBusy("Saving recovery backup and applying import atomically…");
+    setBusy("Importing your business history…");
     setError("");
     try {
       const result = await exchangeService.apply(plan.token, resolutions, {
@@ -242,6 +256,31 @@ export function DataManagementPage() {
         `Import complete: ${result.added} business records added, ${result.updated} updated, ${result.skipped} unchanged/older, ${result.deleted} deleted; ${result.conflicts} conflicts resolved. Source totals reconciled exactly. Recovery backup retained.`,
       );
       setConfirmation(false);
+      if (
+        restoreRoster &&
+        plan.prepared.format === "legacy-transactions" &&
+        plan.prepared.data.sourceDocuments.some((d) => {
+          try {
+            return JSON.parse(d.rawText).app === ORIGINAL_LEGACY_APP;
+          } catch {
+            return false;
+          }
+        })
+      ) {
+        try {
+          const completed = await (
+            await import("../services/legacy-migration")
+          ).legacyMigration.complete(plan.prepared.shopIds[0]);
+          setMigrationResult(
+            `${completed.created + completed.matched} original barbers ready · ${completed.identifiable} historical barber records linked. ${completed.supported} have supporting payment evidence; ${completed.review} need settlement review. Historical daily barber sales were not included in the transaction backup.`,
+          );
+        } catch (e) {
+          setMigrationResult(
+            "Your financial import was saved. Barber migration still needs completion: " +
+              messageOf(e),
+          );
+        }
+      }
       setPlan(null);
     } catch (e) {
       setError(messageOf(e));
@@ -285,6 +324,7 @@ export function DataManagementPage() {
         title="Data Management"
         description="Share JSON files manually. Review every import before it changes your books."
       />
+      {!busy && !plan && <LegacyMigrationCard />}
       {error && <ErrorMessage message={error} />}
       <p className="notice">
         <ShieldCheck size={18} />
@@ -301,16 +341,14 @@ export function DataManagementPage() {
         <section className="legacy-overview">
           <h2>Your imported history is ready</h2>
           <p>
-            The original transaction-only JSON does not include barber/stylist
-            profiles. If you imported that file, your financial transactions are
-            saved, but you must add your barbers or import a full backup that
-            includes staff.
+            {migrationResult ||
+              "Your financial history is saved. Open the dashboard or barber directory below."}
           </p>
           <Button asChild>
             <Link to="/">See imported financial history</Link>
           </Button>{" "}
           <Button asChild variant="outline">
-            <Link to="/stylists">Add your barbers</Link>
+            <Link to="/stylists">Your barbers</Link>
           </Button>
         </section>
       )}
@@ -423,8 +461,11 @@ export function DataManagementPage() {
               <>
                 <div className="preview-placeholder">
                   <strong>
-                    {plan.prepared.format} · schema{" "}
-                    {plan.prepared.schemaVersion}
+                    {plan.prepared.format === "legacy-transactions"
+                      ? "Original transaction backup"
+                      : plan.prepared.format === "legacy-html"
+                        ? "Original daily-sales & staff backup"
+                        : "Business backup"}
                   </strong>
                   <p>
                     File: {file?.name ?? "Local recovery backup"}
@@ -495,11 +536,14 @@ export function DataManagementPage() {
                     ))}
                   </div>
                 )}
-                {plan.warnings.map((w, i) => (
-                  <p className="notice" key={i}>
-                    {w}
-                  </p>
-                ))}
+                <details>
+                  <summary>Import details & source notes</summary>
+                  {plan.warnings.map((w, i) => (
+                    <p className="notice" key={i}>
+                      {w}
+                    </p>
+                  ))}
+                </details>
                 <div className="totals-grid">
                   <span>
                     New
@@ -650,6 +694,26 @@ export function DataManagementPage() {
                   </DataTable>
                 </details>
                 {proposedError && <ErrorMessage message={proposedError} />}
+                {plan.prepared.format === "legacy-transactions" &&
+                  plan.prepared.data.sourceDocuments.some((d) => {
+                    try {
+                      return JSON.parse(d.rawText).app === ORIGINAL_LEGACY_APP;
+                    } catch {
+                      return false;
+                    }
+                  }) && (
+                    <label className="notice">
+                      <input
+                        type="checkbox"
+                        checked={restoreRoster}
+                        onChange={(e) => setRestoreRoster(e.target.checked)}
+                      />{" "}
+                      Restore the original four barbers and their 50% service
+                      commission defaults: {ORIGINAL_BARBERS.join(", ")}. Link
+                      identifiable historical records; preserve existing rates
+                      and all financial amounts.
+                    </label>
+                  )}
                 <Button
                   disabled={
                     !!busy ||

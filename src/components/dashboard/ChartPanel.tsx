@@ -15,12 +15,14 @@ export function ChartPanel({
   data = [],
   compact = false,
   mode = "revenue",
+  provisional = false,
 }: {
   title: string;
   subtitle?: string;
   data?: ChartPoint[];
   compact?: boolean;
   mode?: "revenue" | "profit" | "cash";
+  provisional?: boolean;
 }) {
   return (
     <Panel
@@ -30,7 +32,7 @@ export function ChartPanel({
     >
       {data.length ? (
         <Suspense fallback={<p className="muted">Loading chart…</p>}>
-          <FinancialChart data={data} mode={mode} />
+          <FinancialChart data={data} mode={mode} provisional={provisional} />
         </Suspense>
       ) : (
         <div className="chart-empty">

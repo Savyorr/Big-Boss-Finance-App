@@ -1,3 +1,5 @@
+import { historicalBarberEvidence } from "../../calculations/historical-payments";
+import { HistoricalBarberRecords } from "./HistoricalBarberRecords";
 import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useApp } from "../../app/context";
@@ -19,11 +21,17 @@ import {
   DateRangeControls,
   useDateRange,
 } from "./FinancialShared";
-export function CommissionWorkspace({ tab }: { tab: string }) {
+export function CommissionWorkspace({
+  tab,
+  initialStylistId = "",
+}: {
+  tab: string;
+  initialStylistId?: string;
+}) {
   const { scope, shops } = useApp();
   const data = useFinance();
   const [range, setRange] = useDateRange();
-  const [stylistId, setStylist] = useState("");
+  const [stylistId, setStylist] = useState(initialStylistId);
   const [payPeriod, setPayPeriod] = useState("");
   const [form, setForm] = useState<"payment" | "adjustment" | null>(null);
   const [editing, setEditing] = useState<CommissionPayment | Adjustment | null>(
@@ -43,6 +51,11 @@ export function CommissionWorkspace({ tab }: { tab: string }) {
   const periods = [
     ...new Set([
       ...scoped(data.earnings, scope).map((e) => periodKey(e.businessDate)),
+      ...scoped(data.transactions, scope)
+        .filter(
+          (t) => !t.deletedAt && t.stylistId && historicalBarberEvidence(t),
+        )
+        .map((t) => periodKey(t.businessDate, true, "legacy")),
       ...scoped(data.payments, scope).map((p) =>
         periodKey(p.businessDate, true, p.periodMode),
       ),
@@ -95,7 +108,7 @@ export function CommissionWorkspace({ tab }: { tab: string }) {
             ? "Payments & adjustments"
             : "Commission reconciliation"
         }
-        subtitle="Opening liability + earnings − payments − settlement adjustments = closing liability. A negative closing balance means more has been settled than earned."
+        subtitle="New-entry ledger: opening liability + earnings − verified payments − settlement adjustments. Historical source payment evidence is listed separately below."
       >
         <FilterBar>
           <select
@@ -172,6 +185,12 @@ export function CommissionWorkspace({ tab }: { tab: string }) {
           })}
         </DataTable>
       </Panel>
+      <HistoricalBarberRecords
+        from={from}
+        to={to}
+        stylistId={stylistId}
+        payPeriod={payPeriod}
+      />
       <Panel
         title="Commission earnings audit"
         subtitle="Rate snapshots are saved per stylist per day; products are excluded."

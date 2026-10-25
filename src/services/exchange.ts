@@ -1,3 +1,4 @@
+import { ORIGINAL_LEGACY_APP } from "../config/original-business";
 import { db, type FinanceDatabase } from "../database/db";
 import {
   APP_ID,
@@ -138,6 +139,20 @@ export function createExchangeService(database: FinanceDatabase) {
       options.useWorker === false
         ? await prepareDocument(text, options)
         : await prepareInWorker(text, options);
+    if (
+      options.mode === "replace" &&
+      parsed.format === "legacy-transactions" &&
+      parsed.data.sourceDocuments.some((d) => {
+        try {
+          return JSON.parse(d.rawText).app === ORIGINAL_LEGACY_APP;
+        } catch {
+          return false;
+        }
+      })
+    )
+      throw new Error(
+        "Use Merge for the original transaction-only backup to preserve saved barbers and newer daily sales. Replacement is available for complete business backups.",
+      );
     const baseline = await database.transaction("r", database.tables, () =>
       snapshot(database),
     );

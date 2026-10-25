@@ -167,7 +167,9 @@ export function TransactionsPage() {
                 <strong>{t.description}</strong>
                 <small className="cell-note">
                   {t.payee}
-                  {t.accountingStatus !== "classified" ? " · Needs review" : ""}
+                  {t.accountingStatus !== "classified"
+                    ? " · Provisional history"
+                    : ""}
                 </small>
               </td>
               <td>
@@ -179,7 +181,15 @@ export function TransactionsPage() {
                 )}
               </td>
               <td>{t.category}</td>
-              <td>{t.kind}</td>
+              <td>
+                {t.legacyFields && t.accountingStatus !== "classified"
+                  ? t.legacyFields.income
+                    ? "Recorded revenue"
+                    : t.legacyFields.expense
+                      ? "Recorded expense"
+                      : "Recorded bank movement"
+                  : t.kind}
+              </td>
               <td>
                 {[
                   "Operating expense",
@@ -190,7 +200,16 @@ export function TransactionsPage() {
                 ].includes(t.kind)
                   ? "−"
                   : ""}
-                {formatMoney(t.amountCents)}
+                {formatMoney(
+                  t.legacyFields && t.accountingStatus !== "classified"
+                    ? t.legacyFields.income ||
+                        t.legacyFields.expense ||
+                        t.legacyFields.bankDebit ||
+                        t.legacyFields.bankCredit ||
+                        t.legacyFields.bankDeposit ||
+                        0
+                    : t.amountCents,
+                )}
               </td>
               <td>
                 <Button
